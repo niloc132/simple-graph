@@ -165,16 +165,34 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     this.nodeDist = nodeDist;
   }
 
+  public void setCoords(N node, int x, int y) {
+    locations.put(node, new PrecisePoint(x,y));
+    vectors.put(node, new PrecisePoint());//zero out the item's vector
+  }
+
+  public N getNodeAtCoords(int x, int y) {
+    for (Map.Entry<N, SpriteList<Sprite>> entry : nodeSprites.entrySet()) {
+      //TODO should not iterate over all possible sprites, just start with the ones that are at
+      //least possible
+      for (Sprite s : entry.getValue()) {
+        if (s.getBBox().contains(x, y)) {
+          return entry.getKey();
+        }
+      }
+    }
+    return null;
+  }
+
   public void update() {
-    log.fine("Starting update.");
+    log.finest("Starting update.");
     //update forces acting on each node
     for (int i = 0; i < nodes.size(); i++) {
       N iNode = nodes.get(i);
       PrecisePoint iLoc = locations.get(iNode);
       PrecisePoint iVec = vectors.get(iNode);
-      log.fine("Updating at node " + iNode.getId());
-      log.fine("    pos " + iLoc);
-      log.fine("    vec " + iVec);
+      log.finest("Updating at node " + iNode.getId());
+      log.finest("    pos " + iLoc);
+      log.finest("    vec " + iVec);
 
       //push away from every other node
       for (int j = 0; j < nodes.size(); j++) {
@@ -227,9 +245,9 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       //update position
       iLoc.setX(iLoc.getX() + iVec.getX());
       iLoc.setY(iLoc.getY() + iVec.getY());
-      log.fine("Moving " + iNode.getId());
-      log.fine("    Pos " + iLoc);
-      log.fine("    Vec " + iVec);
+      log.finest("Moving " + iNode.getId());
+      log.finest("    Pos " + iLoc);
+      log.finest("    Vec " + iVec);
       //TODO ensure two are not in the same place
 
       nodeRenderer.render(iNode, iLoc, new NodeRenderContext(iNode));
