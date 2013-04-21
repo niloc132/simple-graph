@@ -1,0 +1,19 @@
+# OS X
+.DS_Store
+
+# Eclipse metadata
+.project
+.settings
+.classpath
+
+# Build output
+target/
+war/
+doc/
+
+# Working directories
+.gwt/
+.gwt-tmp/
+gwt-unitCache/
+www-test/
+tomcat/
