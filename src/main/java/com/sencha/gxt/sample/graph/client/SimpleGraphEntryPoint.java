@@ -21,6 +21,8 @@ package com.sencha.gxt.sample.graph.client;
  */
 
 import com.google.gwt.core.client.EntryPoint;
+import com.google.gwt.event.logical.shared.ValueChangeEvent;
+import com.google.gwt.event.logical.shared.ValueChangeHandler;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.sencha.gxt.chart.client.draw.RGB;
 import com.sencha.gxt.chart.client.draw.path.LineTo;
@@ -34,9 +36,12 @@ import com.sencha.gxt.sample.graph.client.draw.GraphComponent.NodeRenderer;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.RenderContext;
 import com.sencha.gxt.sample.graph.client.model.Edge;
 import com.sencha.gxt.sample.graph.client.model.Node;
+import com.sencha.gxt.widget.core.client.Slider;
+import com.sencha.gxt.widget.core.client.button.ToggleButton;
 import com.sencha.gxt.widget.core.client.container.VerticalLayoutContainer;
 import com.sencha.gxt.widget.core.client.container.VerticalLayoutContainer.VerticalLayoutData;
 import com.sencha.gxt.widget.core.client.container.Viewport;
+import com.sencha.gxt.widget.core.client.toolbar.ToolBar;
 
 public class SimpleGraphEntryPoint implements EntryPoint {
 
@@ -46,7 +51,6 @@ public class SimpleGraphEntryPoint implements EntryPoint {
     VerticalLayoutContainer vlc = new VerticalLayoutContainer();
 
     final GraphComponent<Node, Edge> graph = new GraphComponent<Node, Edge>();
-    graph.setAnimationEnabled(true);
     graph.setNodeRenderer(new NodeRenderer<Node>() {
       public void render(Node node, PrecisePoint coords, RenderContext context) {
         CircleSprite circleSprite = (CircleSprite)context.getSprites().get(0);
@@ -95,6 +99,28 @@ public class SimpleGraphEntryPoint implements EntryPoint {
     graph.addEdge(new Edge(n3, n4));
 
     vlc.add(graph, new VerticalLayoutData(1,1));
+
+    ToolBar controls = new ToolBar();
+    ToggleButton animateBtn = new ToggleButton("Animate");
+    animateBtn.addValueChangeHandler(new ValueChangeHandler<Boolean>() {
+      @Override
+      public void onValueChange(ValueChangeEvent<Boolean> event) {
+        graph.setAnimationEnabled(event.getValue());
+      }
+    });
+    animateBtn.setValue(true, true);
+    controls.add(animateBtn);
+
+    Slider nodeDistance = new Slider();
+    nodeDistance.setToolTip("Distance between nodes");
+    nodeDistance.addValueChangeHandler(new ValueChangeHandler<Integer>() {
+      @Override
+      public void onValueChange(ValueChangeEvent<Integer> event) {
+        graph.setNodeDist(event.getValue());
+      }
+    });
+    controls.add(nodeDistance);
+    vlc.add(controls, new VerticalLayoutData(1, -1));
 
     vp.setWidget(vlc);
 
