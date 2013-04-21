@@ -87,12 +87,25 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
   private List<N> nodes = new ArrayList<N>();
   private Map<N, PrecisePoint> locations = new HashMap<N, PrecisePoint>();
   private Map<N, PrecisePoint> vectors = new HashMap<N, PrecisePoint>();
+
   private AnimationHandle animationHandle;
+  private AnimationCallback animationCallback = new AnimationCallback() {
+    public void execute(double timestamp) {
+      // Run the update to redraw
+      update();
+
+      // Automatically re-schedule
+      animationHandle = AnimationScheduler.get().requestAnimationFrame(this);
+    }
+  };
+
   private CircleSprite nodeTemplate = new CircleSprite();
   private PathSprite edgeTemplate = new PathSprite();
   private double nodeDist = 50;
 
   private double lastPos = 100;
+
+  private boolean animationEnabled = false;
 
   public GraphComponent() {
     nodeTemplate.setRadius(6);
@@ -119,6 +132,22 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       edgeSprites.get(e).add(sprite);
       addSprite(sprite);
     }
+  }
+
+  public void setAnimationEnabled(boolean animationEnabled) {
+    if (animationEnabled != this.animationEnabled) {
+      this.animationEnabled = animationEnabled;
+      if (isAttached()) {
+        if (animationEnabled) {
+          animationHandle = AnimationScheduler.get().requestAnimationFrame(animationCallback);
+        } else if (animationHandle != null) {//i.e. not already running, this check shouldn't be needed
+          animationHandle.cancel();
+        }
+      }
+    }
+  }
+  public boolean isAnimationEnabled() {
+    return animationEnabled;
   }
 
   public void update() {
@@ -198,7 +227,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
         ((MoveTo)sprite.getCommand(0)).setY(iLoc.getY());
         ((LineTo)sprite.getCommand(1)).setX(otherLoc.getX());
         ((LineTo)sprite.getCommand(1)).setY(otherLoc.getY());
-        
+
         //mark sprite command as dirty
         sprite.setCommands(sprite.getCommands());
       }
@@ -223,17 +252,16 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
   @Override
   protected void onAttach() {
     super.onAttach();
-    animationHandle = AnimationScheduler.get().requestAnimationFrame(new AnimationCallback() {
-      public void execute(double timestamp) {
-        update();
-        animationHandle = AnimationScheduler.get().requestAnimationFrame(this);
-      }
-    });
+    if (isAnimationEnabled()) {
+      animationHandle = AnimationScheduler.get().requestAnimationFrame(animationCallback);
+    }
   }
 
   @Override
   protected void onDetach() {
     super.onDetach();
-    animationHandle.cancel();
+    if (isAnimationEnabled() && animationHandle != null) {
+      animationHandle.cancel();
+    }
   }
 }
