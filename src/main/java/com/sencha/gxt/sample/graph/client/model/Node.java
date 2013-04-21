@@ -20,25 +20,12 @@ package com.sencha.gxt.sample.graph.client.model;
  * #L%
  */
 
-import java.util.HashSet;
-import java.util.Set;
 
 public class Node {
   private static int NEXT_ID = 0;
 
   //not final for rpc support
   private int id = NEXT_ID++;
-
-  //not final for rpc support
-  private Set<Edge> edges = new HashSet<Edge>();
-
-  public void linkTo(Node node) {
-    edges.add(new Edge(this, node));
-  }
-
-  public Set<Edge> getEdges() {
-    return edges;
-  }
 
   public int getId() {
     return id;

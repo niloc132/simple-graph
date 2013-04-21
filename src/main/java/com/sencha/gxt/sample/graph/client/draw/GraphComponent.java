@@ -30,11 +30,6 @@ import com.google.gwt.animation.client.AnimationScheduler;
 import com.google.gwt.animation.client.AnimationScheduler.AnimationCallback;
 import com.google.gwt.animation.client.AnimationScheduler.AnimationHandle;
 import com.sencha.gxt.chart.client.draw.DrawComponent;
-import com.sencha.gxt.chart.client.draw.RGB;
-import com.sencha.gxt.chart.client.draw.path.LineTo;
-import com.sencha.gxt.chart.client.draw.path.MoveTo;
-import com.sencha.gxt.chart.client.draw.path.PathSprite;
-import com.sencha.gxt.chart.client.draw.sprite.CircleSprite;
 import com.sencha.gxt.chart.client.draw.sprite.Sprite;
 import com.sencha.gxt.chart.client.draw.sprite.SpriteList;
 import com.sencha.gxt.core.client.util.PrecisePoint;
@@ -43,15 +38,16 @@ import com.sencha.gxt.sample.graph.client.model.Node;
 
 public class GraphComponent<N extends Node, E extends Edge> extends DrawComponent {
   private static final Logger log = Logger.getLogger(GraphComponent.class.getName());
-  /*  public interface RenderContext {
+  public interface RenderContext {
     void useSprite(Sprite s);
     void releaseSprite(Sprite s);
+    List<Sprite> getSprites();
   }
   public interface EdgeRenderer<E extends Edge> {
-    void render(E edge, Point start, Point end, RenderContext context);
+    void render(E edge, PrecisePoint start, PrecisePoint end, RenderContext context);
   }
   public interface NodeRenderer<N extends Node> {
-    void render(N node, Point coords, RenderContext context);
+    void render(N node, PrecisePoint coords, RenderContext context);
   }
 
   private class NodeRenderContext implements RenderContext {
@@ -60,24 +56,44 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       this.node = node;
     }
     public void useSprite(Sprite s) {
+      addSprite(s);
       nodeSprites.get(node).add(s);
     }
     public void releaseSprite(Sprite s) {
+      remove(s);
       nodeSprites.get(node).remove(s);
+    }
+    public List<Sprite> getSprites() {
+      SpriteList<Sprite> spriteList = nodeSprites.get(node);
+      if (spriteList == null) {
+        spriteList = new SpriteList<Sprite>();
+        nodeSprites.put(node, spriteList);
+      }
+      return spriteList;
     }
   }
   private class EdgeRenderContext implements RenderContext {
-    private final E node;
+    private final E edge;
     public EdgeRenderContext(E node) {
-      this.node = node;
+      this.edge = node;
     }
     public void useSprite(Sprite s) {
-      edgeSprites.get(node).add(s);
+      addSprite(s);
+      edgeSprites.get(edge).add(s);
     }
     public void releaseSprite(Sprite s) {
-      edgeSprites.get(node).remove(s);
+      remove(s);
+      edgeSprites.get(edge).remove(s);
     }
-  }*/
+    public List<Sprite> getSprites() {
+      SpriteList<Sprite> spriteList = edgeSprites.get(edge);
+      if (spriteList == null) {
+        spriteList = new SpriteList<Sprite>();
+        edgeSprites.put(edge, spriteList);
+      }
+      return spriteList;
+    }
+  }
   private static final double REPULSE_CONST = 500.0;
   private static final double ATTRACT_CONST = 0.002;
   private static final double FRICTION_CONST = 0.03;
@@ -87,6 +103,8 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
   private List<N> nodes = new ArrayList<N>();
   private Map<N, PrecisePoint> locations = new HashMap<N, PrecisePoint>();
   private Map<N, PrecisePoint> vectors = new HashMap<N, PrecisePoint>();
+  
+  private List<E> edges = new ArrayList<E>();
 
   private AnimationHandle animationHandle;
   private AnimationCallback animationCallback = new AnimationCallback() {
@@ -99,40 +117,27 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     }
   };
 
-  private CircleSprite nodeTemplate = new CircleSprite();
-  private PathSprite edgeTemplate = new PathSprite();
+  private EdgeRenderer<E> edgeRenderer;
+  private NodeRenderer<N> nodeRenderer;
+
+
   private double nodeDist = 50;
 
   private double lastPos = 100;
 
   private boolean animationEnabled = false;
 
-  public GraphComponent() {
-    nodeTemplate.setRadius(6);
-    nodeTemplate.setStroke(RGB.RED);
-    nodeTemplate.setStrokeWidth(2);
 
-    edgeTemplate.setStroke(RGB.BLUE);
-  }
 
   public void addNode(N n) {
     locations.put(n, new PrecisePoint(lastPos+=nodeDist, lastPos+=nodeDist));//TODO better jitter
     vectors.put(n, new PrecisePoint(0,0));
     nodes.add(n);
-
-    nodeSprites.put(n, new SpriteList<Sprite>());
-    nodeSprites.get(n).add(new CircleSprite(nodeTemplate));
-    this.addSprite(nodeSprites.get(n).get(0));
-
-    for (Edge e : n.getEdges()) {
-      edgeSprites.put((E) e, new SpriteList<Sprite>());
-      PathSprite sprite = new PathSprite(edgeTemplate);
-      sprite.addCommand(new MoveTo());
-      sprite.addCommand(new LineTo());
-      edgeSprites.get(e).add(sprite);
-      addSprite(sprite);
-    }
   }
+  public void addEdge(E edge) {
+    edges.add(edge);
+  }
+
 
   public void setAnimationEnabled(boolean animationEnabled) {
     if (animationEnabled != this.animationEnabled) {
@@ -148,6 +153,16 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
   }
   public boolean isAnimationEnabled() {
     return animationEnabled;
+  }
+
+  public void setEdgeRenderer(EdgeRenderer<E> edgeRenderer) {
+    this.edgeRenderer = edgeRenderer;
+  }
+  public void setNodeRenderer(NodeRenderer<N> nodeRenderer) {
+    this.nodeRenderer = nodeRenderer;
+  }
+  public void setNodeDist(double nodeDist) {
+    this.nodeDist = nodeDist;
   }
 
   public void update() {
@@ -177,23 +192,26 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
         iVec.setY(iVec.getY() + bearing.getY() * force);
       }
 
-      //pull toward all connected nodes
-      for (Edge e : iNode.getEdges()) {
-        Node other = e.getFrom();
-        PrecisePoint otherLoc = locations.get(other);
-        PrecisePoint otherVec = vectors.get(other);
 
-        double distance = distance(iLoc, otherLoc);
-        PrecisePoint bearing = bearingUnit(iLoc, otherLoc);//TODO cache this
+    }
+    //pull toward all connected nodes
+    for (E e : edges) {
+      Node to = e.getTo();
+      PrecisePoint toLoc = locations.get(to);
+      PrecisePoint toVec = vectors.get(to);
+      Node from = e.getFrom();
+      PrecisePoint fromLoc = locations.get(from);
+      PrecisePoint fromVec = vectors.get(from);
 
-        double force = ATTRACT_CONST * Math.max(distance - nodeDist, 0);
+      double distance = distance(toLoc, fromLoc);
+      PrecisePoint bearing = bearingUnit(toLoc, fromLoc);//TODO cache this
 
-        iVec.setX(iVec.getX() - bearing.getX() * force);
-        iVec.setY(iVec.getY() - bearing.getY() * force);
-        otherVec.setX(otherVec.getX() + bearing.getX() * force);
-        otherVec.setY(otherVec.getY() + bearing.getY() * force);
-      }
+      double force = ATTRACT_CONST * Math.max(distance - nodeDist, 0);
 
+      toVec.setX(toVec.getX() - bearing.getX() * force);
+      toVec.setY(toVec.getY() - bearing.getY() * force);
+      fromVec.setX(fromVec.getX() + bearing.getX() * force);
+      fromVec.setY(fromVec.getY() + bearing.getY() * force);
     }
 
     //update position of each node based on current forces
@@ -214,23 +232,14 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       log.fine("    Vec " + iVec);
       //TODO ensure two are not in the same place
 
-      ((CircleSprite)nodeSprites.get(iNode).get(0)).setCenterX(iLoc.getX());
-      ((CircleSprite)nodeSprites.get(iNode).get(0)).setCenterY(iLoc.getY());
+      nodeRenderer.render(iNode, iLoc, new NodeRenderContext(iNode));
     }
-    for (int i = 0; i < nodes.size(); i++) {
-      N iNode = nodes.get(i);
-      PrecisePoint iLoc = locations.get(iNode);
-      for (Edge e : iNode.getEdges()) {
-        PrecisePoint otherLoc = locations.get(e.getFrom());
-        PathSprite sprite = (PathSprite) edgeSprites.get(e).get(0);
-        ((MoveTo)sprite.getCommand(0)).setX(iLoc.getX());
-        ((MoveTo)sprite.getCommand(0)).setY(iLoc.getY());
-        ((LineTo)sprite.getCommand(1)).setX(otherLoc.getX());
-        ((LineTo)sprite.getCommand(1)).setY(otherLoc.getY());
 
-        //mark sprite command as dirty
-        sprite.setCommands(sprite.getCommands());
-      }
+    for (E e : edges) {
+      PrecisePoint toLoc = locations.get(e.getTo());
+      PrecisePoint fromLoc = locations.get(e.getFrom());
+      edgeRenderer.render((E) e, toLoc, fromLoc, new EdgeRenderContext((E) e));
+      
     }
 
 
