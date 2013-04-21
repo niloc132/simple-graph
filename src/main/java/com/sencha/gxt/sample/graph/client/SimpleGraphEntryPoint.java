@@ -34,6 +34,7 @@ import com.sencha.gxt.sample.graph.client.draw.GraphComponent;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.EdgeRenderer;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.NodeRenderer;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.RenderContext;
+import com.sencha.gxt.sample.graph.client.draw.GraphDnD;
 import com.sencha.gxt.sample.graph.client.model.Edge;
 import com.sencha.gxt.sample.graph.client.model.Node;
 import com.sencha.gxt.widget.core.client.Slider;
@@ -56,7 +57,7 @@ public class SimpleGraphEntryPoint implements EntryPoint {
         CircleSprite circleSprite = (CircleSprite)context.getSprites().get(0);
         if (circleSprite == null) {
           circleSprite = new CircleSprite();
-          circleSprite.setRadius(3);
+          circleSprite.setRadius(6);
           context.useSprite(circleSprite);
         }
         circleSprite.setCenterX(coords.getX());
@@ -82,6 +83,8 @@ public class SimpleGraphEntryPoint implements EntryPoint {
         sprite.setCommands(sprite.getCommands());
       }
     });
+
+    new GraphDnD<Node, Edge>(graph);
 
     Node n1 = new Node();
     Node n2 = new Node();
