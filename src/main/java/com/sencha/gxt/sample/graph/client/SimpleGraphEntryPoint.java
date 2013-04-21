@@ -115,6 +115,8 @@ public class SimpleGraphEntryPoint implements EntryPoint {
     controls.add(animateBtn);
 
     Slider nodeDistance = new Slider();
+    nodeDistance.setMaxValue(200);
+    nodeDistance.setIncrement(5);
     nodeDistance.setToolTip("Distance between nodes");
     nodeDistance.addValueChangeHandler(new ValueChangeHandler<Integer>() {
       @Override
@@ -122,6 +124,7 @@ public class SimpleGraphEntryPoint implements EntryPoint {
         graph.setNodeDist(event.getValue());
       }
     });
+    nodeDistance.setValue(50, true);
     controls.add(nodeDistance);
     vlc.add(controls, new VerticalLayoutData(1, -1));
 

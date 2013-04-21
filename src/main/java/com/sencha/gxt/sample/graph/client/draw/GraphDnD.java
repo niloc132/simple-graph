@@ -72,12 +72,21 @@ public class GraphDnD<N extends Node, E extends Edge> {
     handler.setAutoHide(false);
   }
   protected void onMouseDown(MouseDownEvent event) {
-    //watch for next move or up
-    handler.add();
+    event.preventDefault();
 
     start = new Point(event.getRelativeX(graph.getElement()), event.getRelativeY(graph.getElement()));
 
     activeNode = graph.getNodeAtCoords(start.getX(), start.getY());
+
+    if (activeNode == null) {
+      //not actually dragging, give up
+      return;
+    }
+
+    //watch for next move or up
+    handler.add();
+
+    //TODO fire an event about starting dragging
   }
 
   protected void onMouseMove(Event event) {
