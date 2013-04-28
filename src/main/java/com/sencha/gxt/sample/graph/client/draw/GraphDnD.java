@@ -24,21 +24,20 @@ import com.google.gwt.event.dom.client.MouseDownEvent;
 import com.google.gwt.event.dom.client.MouseDownHandler;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
+import com.google.web.bindery.event.shared.HandlerRegistration;
 import com.sencha.gxt.core.client.util.BaseEventPreview;
 import com.sencha.gxt.core.client.util.Point;
 import com.sencha.gxt.sample.graph.client.model.Edge;
 import com.sencha.gxt.sample.graph.client.model.Node;
 
 /**
- * Simple dnd impl for the graph component, directly translating mouse movement when dragged to
- * node position.
- * 
- * @todo factor out actual behavior to events to allow changing behavior (move, re-link, pan, etc)
+ * Simple abstract class containing dnd wiring, with abstract methods to implement various drag/drop
+ * behaviors on the GraphComponent
  * 
  * @param <N>
  * @param <E>
  */
-public class GraphDnD<N extends Node, E extends Edge> {
+public abstract class GraphDnD<N extends Node, E extends Edge> {
   private class Handler extends BaseEventPreview implements MouseDownHandler {
     @Override
     public void onMouseDown(MouseDownEvent event) {
@@ -61,24 +60,42 @@ public class GraphDnD<N extends Node, E extends Edge> {
   }
 
   private final Handler handler = new Handler();
+  private HandlerRegistration handlerReg;
   private final GraphComponent<N, E> graph;
-  private Point start;
-  private N activeNode;
+  private Point dragStartPosition;
 
   public GraphDnD(GraphComponent<N,E> graph) {
     this.graph = graph;
-    this.graph.addDomHandler(handler, MouseDownEvent.getType());
-
     handler.setAutoHide(false);
+
+    handlerReg = this.graph.addDomHandler(handler, MouseDownEvent.getType());
+  }
+
+  public GraphComponent<N, E> getGraph() {
+    return graph;
+  }
+
+  public void release() {
+    assert handlerReg != null : "Already released";
+    //if dragging, cancel
+    if (dragStartPosition != null) {
+      onCancel();
+
+      dragStartPosition = null;
+      handler.remove();
+    }
+
+    handlerReg.removeHandler();
+    handlerReg = null;
   }
   protected void onMouseDown(MouseDownEvent event) {
     event.preventDefault();
 
-    start = new Point(event.getRelativeX(graph.getElement()), event.getRelativeY(graph.getElement()));
+    dragStartPosition = new Point(event.getRelativeX(graph.getElement()), event.getRelativeY(graph.getElement()));
 
-    activeNode = graph.getNodeAtCoords(start.getX(), start.getY());
+    boolean start = onStartDrag(dragStartPosition.getX(), dragStartPosition.getY());
 
-    if (activeNode == null) {
+    if (!start) {
       //not actually dragging, give up
       return;
     }
@@ -90,19 +107,32 @@ public class GraphDnD<N extends Node, E extends Edge> {
   }
 
   protected void onMouseMove(Event event) {
+    assert dragStartPosition != null : "onMouseMove called while not actually dragging!";
     //TODO fire an event about the move
     int x = event.getClientX() - graph.getElement().getAbsoluteTop() + graph.getElement().getScrollTop() + graph.getElement().getOwnerDocument().getScrollTop();
     int y = event.getClientY() - graph.getElement().getAbsoluteLeft() + graph.getElement().getScrollLeft() + graph.getElement().getOwnerDocument().getScrollLeft();
 
     //TODO consider getting the offset from the original mouse point to the object
     //     and using that here
-    graph.setCoords(activeNode, x, y);
+    onDrag(x, y);
   }
 
   protected void onMouseUp(Event event) {
+    assert dragStartPosition != null : "onMouseUp called while not actually dragging!";
     //TODO fire an event about the release
+    int x = event.getClientX() - graph.getElement().getAbsoluteTop() + graph.getElement().getScrollTop() + graph.getElement().getOwnerDocument().getScrollTop();
+    int y = event.getClientY() - graph.getElement().getAbsoluteLeft() + graph.getElement().getScrollLeft() + graph.getElement().getOwnerDocument().getScrollLeft();
 
-    start = null;
+    onDrop(x,y);
+
+    dragStartPosition = null;
     handler.remove();
   }
+  protected abstract boolean onStartDrag(int x, int y);
+
+  protected abstract void onDrag(int x, int y);
+
+  protected abstract void onDrop(int x, int y);
+
+  protected abstract void onCancel();
 }

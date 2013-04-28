@@ -34,7 +34,8 @@ import com.sencha.gxt.sample.graph.client.draw.GraphComponent;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.EdgeRenderer;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.NodeRenderer;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.RenderContext;
-import com.sencha.gxt.sample.graph.client.draw.GraphDnD;
+import com.sencha.gxt.sample.graph.client.draw.NodeConnectionDnD;
+import com.sencha.gxt.sample.graph.client.draw.NodePositionDnD;
 import com.sencha.gxt.sample.graph.client.model.Edge;
 import com.sencha.gxt.sample.graph.client.model.Node;
 import com.sencha.gxt.widget.core.client.Slider;
@@ -84,22 +85,44 @@ public class SimpleGraphEntryPoint implements EntryPoint {
       }
     });
 
-    new GraphDnD<Node, Edge>(graph);
+//    new NodePositionDnD<Node, Edge>(graph);
+    new NodeConnectionDnD<Node, Edge>(graph);
 
     Node n1 = new Node();
     Node n2 = new Node();
     Node n3 = new Node();
     Node n4 = new Node();
+    Node n5 = new Node();
+    Node n6 = new Node();
+    Node n7 = new Node();
+    Node n8 = new Node();
+    Node n9 = new Node();
+    Node n10 = new Node();
+    Node n11 = new Node();
 
     graph.addNode(n1);
     graph.addNode(n2);
     graph.addNode(n3);
     graph.addNode(n4);
+    graph.addNode(n5);
+    graph.addNode(n6);
+    graph.addNode(n7);
+    graph.addNode(n8);
+    graph.addNode(n9);
+    graph.addNode(n10);
+    graph.addNode(n11);
 
     graph.addEdge(new Edge(n1, n2));
     graph.addEdge(new Edge(n1, n3));
     graph.addEdge(new Edge(n2, n3));
     graph.addEdge(new Edge(n3, n4));
+    graph.addEdge(new Edge(n1, n5));
+    graph.addEdge(new Edge(n2, n6));
+    graph.addEdge(new Edge(n3, n7));
+    graph.addEdge(new Edge(n4, n8));
+    graph.addEdge(new Edge(n4, n9));
+    graph.addEdge(new Edge(n4, n10));
+    graph.addEdge(new Edge(n4, n11));
 
     vlc.add(graph, new VerticalLayoutData(1,1));
 
