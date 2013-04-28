@@ -39,11 +39,17 @@ import com.sencha.gxt.sample.graph.client.draw.NodePositionDnD;
 import com.sencha.gxt.sample.graph.client.model.Edge;
 import com.sencha.gxt.sample.graph.client.model.Node;
 import com.sencha.gxt.widget.core.client.Slider;
+import com.sencha.gxt.widget.core.client.button.TextButton;
 import com.sencha.gxt.widget.core.client.button.ToggleButton;
 import com.sencha.gxt.widget.core.client.container.VerticalLayoutContainer;
 import com.sencha.gxt.widget.core.client.container.VerticalLayoutContainer.VerticalLayoutData;
 import com.sencha.gxt.widget.core.client.container.Viewport;
+import com.sencha.gxt.widget.core.client.event.CheckChangeEvent;
+import com.sencha.gxt.widget.core.client.event.CheckChangeEvent.CheckChangeHandler;
+import com.sencha.gxt.widget.core.client.menu.CheckMenuItem;
+import com.sencha.gxt.widget.core.client.menu.Menu;
 import com.sencha.gxt.widget.core.client.toolbar.ToolBar;
+import com.sencha.gxt.widget.core.client.tree.Tree.CheckState;
 
 public class SimpleGraphEntryPoint implements EntryPoint {
 
@@ -85,9 +91,83 @@ public class SimpleGraphEntryPoint implements EntryPoint {
       }
     });
 
-//    new NodePositionDnD<Node, Edge>(graph);
-    new NodeConnectionDnD<Node, Edge>(graph);
 
+    createStartingGraph(graph);
+
+    vlc.add(graph, new VerticalLayoutData(1,1));
+
+    ToolBar controls = new ToolBar();
+    ToggleButton animateBtn = new ToggleButton("Animate");
+    animateBtn.addValueChangeHandler(new ValueChangeHandler<Boolean>() {
+      @Override
+      public void onValueChange(ValueChangeEvent<Boolean> event) {
+        graph.setAnimationEnabled(event.getValue());
+      }
+    });
+    animateBtn.setValue(true, true);
+    controls.add(animateBtn);
+
+    Slider nodeDistance = new Slider();
+    nodeDistance.setMaxValue(200);
+    nodeDistance.setIncrement(5);
+    nodeDistance.setToolTip("Distance between nodes");
+    nodeDistance.addValueChangeHandler(new ValueChangeHandler<Integer>() {
+      @Override
+      public void onValueChange(ValueChangeEvent<Integer> event) {
+        graph.setNodeDist(event.getValue());
+      }
+    });
+    nodeDistance.setValue(50, true);
+    controls.add(nodeDistance);
+
+    TextButton tool = new TextButton("Tool");
+    tool.setMenu(new Menu());
+    controls.add(tool);
+
+    final NodePositionDnD<Node, Edge> dragBehavior = new NodePositionDnD<Node, Edge>(graph);
+    dragBehavior.release();
+    CheckMenuItem drag = new CheckMenuItem("Drag Node");
+    drag.setGroup("tools");
+    drag.addCheckChangeHandler(new CheckChangeHandler<CheckMenuItem>() {
+      @Override
+      public void onCheckChange(CheckChangeEvent<CheckMenuItem> event) {
+        if (event.getChecked().equals(CheckState.CHECKED)) {
+          dragBehavior.attach();
+        } else {
+          dragBehavior.release();
+        }
+      }
+    });
+    tool.getMenu().add(drag);
+
+    final NodeConnectionDnD<Node, Edge> connectBehavior = new NodeConnectionDnD<Node, Edge>(graph);
+    connectBehavior.release();
+    CheckMenuItem connect = new CheckMenuItem("Connect Existing Nodes");
+    connect.setGroup("tools");
+    connect.addCheckChangeHandler(new CheckChangeHandler<CheckMenuItem>() {
+      @Override
+      public void onCheckChange(CheckChangeEvent<CheckMenuItem> event) {
+        if (event.getChecked().equals(CheckState.CHECKED)) {
+          connectBehavior.attach();
+        } else {
+          connectBehavior.release();
+        }
+      }
+    });
+    tool.getMenu().add(connect);
+
+//    tool.getMenu().add(new CheckMenuItem("Create and Connect Node"));
+//    tool.getMenu().add(new CheckMenuItem("Pan graph"));
+
+
+    vlc.add(controls, new VerticalLayoutData(1, -1));
+
+    vp.setWidget(vlc);
+
+    RootPanel.get().add(vp);
+  }
+
+  private void createStartingGraph(final GraphComponent<Node, Edge> graph) {
     Node n1 = new Node();
     Node n2 = new Node();
     Node n3 = new Node();
@@ -123,36 +203,5 @@ public class SimpleGraphEntryPoint implements EntryPoint {
     graph.addEdge(new Edge(n4, n9));
     graph.addEdge(new Edge(n4, n10));
     graph.addEdge(new Edge(n4, n11));
-
-    vlc.add(graph, new VerticalLayoutData(1,1));
-
-    ToolBar controls = new ToolBar();
-    ToggleButton animateBtn = new ToggleButton("Animate");
-    animateBtn.addValueChangeHandler(new ValueChangeHandler<Boolean>() {
-      @Override
-      public void onValueChange(ValueChangeEvent<Boolean> event) {
-        graph.setAnimationEnabled(event.getValue());
-      }
-    });
-    animateBtn.setValue(true, true);
-    controls.add(animateBtn);
-
-    Slider nodeDistance = new Slider();
-    nodeDistance.setMaxValue(200);
-    nodeDistance.setIncrement(5);
-    nodeDistance.setToolTip("Distance between nodes");
-    nodeDistance.addValueChangeHandler(new ValueChangeHandler<Integer>() {
-      @Override
-      public void onValueChange(ValueChangeEvent<Integer> event) {
-        graph.setNodeDist(event.getValue());
-      }
-    });
-    nodeDistance.setValue(50, true);
-    controls.add(nodeDistance);
-    vlc.add(controls, new VerticalLayoutData(1, -1));
-
-    vp.setWidget(vlc);
-
-    RootPanel.get().add(vp);
   }
 }

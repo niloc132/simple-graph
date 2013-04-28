@@ -68,11 +68,17 @@ public abstract class GraphDnD<N extends Node, E extends Edge> {
     this.graph = graph;
     handler.setAutoHide(false);
 
-    handlerReg = this.graph.addDomHandler(handler, MouseDownEvent.getType());
+    attach();
   }
 
   public GraphComponent<N, E> getGraph() {
     return graph;
+  }
+
+  public void attach() {
+    assert handlerReg == null : "Already attached";
+
+    handlerReg = this.graph.addDomHandler(handler, MouseDownEvent.getType());
   }
 
   public void release() {
