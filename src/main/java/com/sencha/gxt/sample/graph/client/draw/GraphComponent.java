@@ -36,18 +36,44 @@ import com.sencha.gxt.core.client.util.PrecisePoint;
 import com.sencha.gxt.sample.graph.client.model.Edge;
 import com.sencha.gxt.sample.graph.client.model.Node;
 
+/**
+ * Simple graph widget, implemented using the gxt draw library with a simple force-directed layout. Rendering
+ * of nodes and edges is delegated to {@link EdgeRenderer}s and {@link NodeRenderer}s, and the layout is animated
+ * to run as the browser is able to. 
+ *
+ * @param <N>
+ * @param <E>
+ */
 public class GraphComponent<N extends Node, E extends Edge> extends DrawComponent {
   private static final Logger log = Logger.getLogger(GraphComponent.class.getName());
+
+  /**
+   * Allows specifying a way to draw a Node object to be centered at the given coordinates.
+   *
+   * @param <N>
+   */
+  public interface NodeRenderer<N extends Node> {
+    void render(N node, PrecisePoint coords, RenderContext context);
+  }
+
+  /**
+   * Allows specifying a way to draw an Edge object between the two given coordinates.
+   *
+   * @param <E>
+   */
+  public interface EdgeRenderer<E extends Edge> {
+    void render(E edge, PrecisePoint start, PrecisePoint end, RenderContext context);
+  }
+
+  /**
+   * Simple API to let renderers draw and delete sprites, as well as get information about which
+   * sprites are drawn for a given object.
+   *
+   */
   public interface RenderContext {
     void useSprite(Sprite s);
     void releaseSprite(Sprite s);
     List<Sprite> getSprites();
-  }
-  public interface EdgeRenderer<E extends Edge> {
-    void render(E edge, PrecisePoint start, PrecisePoint end, RenderContext context);
-  }
-  public interface NodeRenderer<N extends Node> {
-    void render(N node, PrecisePoint coords, RenderContext context);
   }
 
   private class NodeRenderContext implements RenderContext {
@@ -103,7 +129,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
   private List<N> nodes = new ArrayList<N>();
   private Map<N, PrecisePoint> locations = new HashMap<N, PrecisePoint>();
   private Map<N, PrecisePoint> vectors = new HashMap<N, PrecisePoint>();
-  
+
   private List<E> edges = new ArrayList<E>();
 
   private AnimationHandle animationHandle;
@@ -129,16 +155,36 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
 
 
 
+  /**
+   * Declares that a node should be rendered the next time the layout update is run. 
+   * 
+   * Each edge in that node must also be added, see {@link #addEdge(Edge)}.
+   *
+   * @param n the node to draw
+   */
   public void addNode(N n) {
     locations.put(n, new PrecisePoint(lastPos+=nodeDist, lastPos+=nodeDist));//TODO better jitter
     vectors.put(n, new PrecisePoint(0,0));
     nodes.add(n);
   }
+
+  /**
+   * Declares that a node should be rendered the next time the layout update is run.
+   * 
+   * Each node attached to the edge must also be added, see {@link #addNode(Node)}.
+   * 
+   * @param edge the edge to draw
+   */
   public void addEdge(E edge) {
     edges.add(edge);
   }
 
 
+  /**
+   * Enables or disables animations. Enabled by default - if disabled, the layout will not be run automatically, 
+   * {@link #update()} must be invoked to perform the layout operation.
+   * @param animationEnabled
+   */
   public void setAnimationEnabled(boolean animationEnabled) {
     if (animationEnabled != this.animationEnabled) {
       this.animationEnabled = animationEnabled;
@@ -165,11 +211,28 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     this.nodeDist = nodeDist;
   }
 
+  /**
+   * Allows external code to specify the position of a given node. When executed, will set the velocity
+   * of that node to zero.
+   *
+   * @param node
+   * @param x
+   * @param y
+   */
   public void setCoords(N node, int x, int y) {
+    //TODO consider updating existing objects rather than creating new ones
     locations.put(node, new PrecisePoint(x,y));
     vectors.put(node, new PrecisePoint());//zero out the item's vector
   }
 
+  /**
+   * Gets a node (if any) present at the given coordinates by checking each sprite associated with that
+   * node and checking its bounding box. 
+   * 
+   * @param x
+   * @param y
+   * @return
+   */
   public N getNodeAtCoords(int x, int y) {
     for (Map.Entry<N, SpriteList<Sprite>> entry : nodeSprites.entrySet()) {
       //TODO should not iterate over all possible sprites, just start with the ones that are at
@@ -183,6 +246,9 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     return null;
   }
 
+  /**
+   * Performs an update of the force-directed layout. Automatically run if animations are enabled.
+   */
   public void update() {
     log.finest("Starting update.");
     //update forces acting on each node
@@ -232,13 +298,13 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       fromVec.setY(fromVec.getY() + bearing.getY() * force);
     }
 
-    //update position of each node based on current forces
+    // update position of each node based on current forces
     for (int i = 0; i < nodes.size(); i++) {
       N iNode = nodes.get(i);
       PrecisePoint iLoc = locations.get(iNode);
       PrecisePoint iVec = vectors.get(iNode);
 
-      //apply friction
+      //apply some friction (probably should be done earlier)
       iVec.setX(iVec.getX() * (1 - FRICTION_CONST));
       iVec.setY(iVec.getY() * (1 - FRICTION_CONST));
 
@@ -253,25 +319,25 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       nodeRenderer.render(iNode, iLoc, new NodeRenderContext(iNode));
     }
 
+    // update position of each edge based on current nodes
     for (E e : edges) {
       PrecisePoint toLoc = locations.get(e.getTo());
       PrecisePoint fromLoc = locations.get(e.getFrom());
-      edgeRenderer.render((E) e, toLoc, fromLoc, new EdgeRenderContext((E) e));
-      
-    }
+      edgeRenderer.render(e, toLoc, fromLoc, new EdgeRenderContext(e));
 
+    }
 
     //redraw
     redrawSurface();
   }
 
-  private PrecisePoint bearingUnit(PrecisePoint iLoc, PrecisePoint jLoc) {
+  private static PrecisePoint bearingUnit(PrecisePoint iLoc, PrecisePoint jLoc) {
     double dist = distance(iLoc, jLoc);
     PrecisePoint bearing = new PrecisePoint((iLoc.getX() - jLoc.getX())/dist, (iLoc.getY() - jLoc.getY())/dist);
     return bearing;
   }
 
-  private double distance(PrecisePoint iLoc, PrecisePoint jLoc) {
+  private static double distance(PrecisePoint iLoc, PrecisePoint jLoc) {
     return Math.sqrt(Math.pow(iLoc.getX() - jLoc.getX(), 2) + 
         Math.pow(iLoc.getY() - jLoc.getY(), 2));
   }
