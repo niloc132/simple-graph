@@ -75,6 +75,10 @@ public abstract class GraphDnD<N extends Node, E extends Edge> {
     return graph;
   }
 
+  public Point getDragStartPosition() {
+    return dragStartPosition;
+  }
+
   public void attach() {
     assert handlerReg == null : "Already attached";
 

@@ -156,7 +156,22 @@ public class SimpleGraphEntryPoint implements EntryPoint {
     });
     tool.getMenu().add(connect);
 
-//    tool.getMenu().add(new CheckMenuItem("Create and Connect Node"));
+    final CreateNodeDnD<Node, Edge> createBehavior = new CreateNodeDnD<Node, Edge>(graph);
+    createBehavior.release();
+    CheckMenuItem create = new CheckMenuItem("Create and Connect Node");
+    create.setGroup("tools");
+    create.addCheckChangeHandler(new CheckChangeHandler<CheckMenuItem>() {
+      @Override
+      public void onCheckChange(CheckChangeEvent<CheckMenuItem> event) {
+        if (event.getChecked().equals(CheckState.CHECKED)) {
+          createBehavior.attach();
+        } else {
+          createBehavior.release();
+        }
+      }
+    });
+    tool.getMenu().add(create);
+
 //    tool.getMenu().add(new CheckMenuItem("Pan graph"));
 
 
