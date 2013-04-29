@@ -247,6 +247,16 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
   }
 
   /**
+   * Gets the current exact position of the given node
+   *
+   * @param node
+   * @return
+   */
+  public PrecisePoint getNodeCoords(N node) {
+    return locations.get(node);
+  }
+
+  /**
    * Performs an update of the force-directed layout. Automatically run if animations are enabled.
    */
   public void update() {

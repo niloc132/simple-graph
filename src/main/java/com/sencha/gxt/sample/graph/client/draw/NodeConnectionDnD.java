@@ -20,12 +20,19 @@ package com.sencha.gxt.sample.graph.client.draw;
  * #L%
  */
 
+import com.sencha.gxt.chart.client.draw.RGB;
+import com.sencha.gxt.chart.client.draw.path.LineTo;
+import com.sencha.gxt.chart.client.draw.path.MoveTo;
+import com.sencha.gxt.chart.client.draw.path.PathSprite;
+import com.sencha.gxt.core.client.util.PrecisePoint;
 import com.sencha.gxt.sample.graph.client.model.Edge;
 import com.sencha.gxt.sample.graph.client.model.Node;
 
 public class NodeConnectionDnD<N extends Node, E extends Edge> extends GraphDnD<N, E> {
 
   private N startNode;
+  private boolean oldIsAnimated;
+  private PathSprite newConnection;
   public NodeConnectionDnD(GraphComponent<N, E> graph) {
     super(graph);
   }
@@ -33,23 +40,53 @@ public class NodeConnectionDnD<N extends Node, E extends Edge> extends GraphDnD<
   @Override
   protected boolean onStartDrag(int x, int y) {
     startNode = getGraph().getNodeAtCoords(x, y);
-    return startNode != null;
+    if (startNode != null) {
+      //stop animations for easier usability (consider replacing with locking nodes that we get near?)
+      oldIsAnimated = getGraph().isAnimationEnabled();
+      getGraph().setAnimationEnabled(false);
+
+      newConnection = new PathSprite();
+      newConnection.setStroke(RGB.RED);
+      PrecisePoint actual = getGraph().getNodeCoords(startNode);
+      newConnection.addCommand(new MoveTo(actual.getX(), actual.getY()));
+      getGraph().addSprite(newConnection);
+      newConnection.redraw();
+      return true;
+    }
+    return false;
   }
 
   @Override
   protected void onDrag(int x, int y) {
-    //TODO remove existing simple connect (and let it get animated...?)
-    //TODO if over another node, draw a simple connect
+    N endNode = getGraph().getNodeAtCoords(x, y);
+    final LineTo line;
+    if (endNode != null) {
+      // lock to node if it exists
+      PrecisePoint actual = getGraph().getNodeCoords(endNode);
+      line = new LineTo(actual.getX(), actual.getY());
+    } else {
+      // just follow mouse if not
+      line = new LineTo(x,y);
+    }
+    if (newConnection.getCommands().size() != 1) {
+      assert newConnection.getCommands().size() == 2;
+      newConnection.getCommands().remove(1);
+    }
+    newConnection.addCommand(line);
+    newConnection.redraw();
   }
 
   @Override
   protected void onDrop(int x, int y) {
-    //TODO remove existing simpleConnect
+    getGraph().remove(newConnection);
+    newConnection = null;
+
     N endNode = getGraph().getNodeAtCoords(x, y);
     if (endNode != null) {
       getGraph().addEdge(createEdge(startNode, endNode));
     }
     startNode = null;
+    getGraph().setAnimationEnabled(oldIsAnimated);
   }
 
   protected E createEdge(N startNode, N endNode) {
@@ -58,8 +95,11 @@ public class NodeConnectionDnD<N extends Node, E extends Edge> extends GraphDnD<
 
   @Override
   protected void onCancel() {
-    //TODO remove existing simple connect
+    getGraph().remove(newConnection);
+    newConnection = null;
+
     startNode = null;
+    getGraph().setAnimationEnabled(oldIsAnimated);
   }
 
 }
