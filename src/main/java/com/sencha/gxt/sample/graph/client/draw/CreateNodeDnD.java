@@ -1,4 +1,4 @@
-package com.sencha.gxt.sample.graph.client;
+package com.sencha.gxt.sample.graph.client.draw;
 
 /*
  * #%L
@@ -26,8 +26,6 @@ import com.sencha.gxt.chart.client.draw.path.MoveTo;
 import com.sencha.gxt.chart.client.draw.path.PathSprite;
 import com.sencha.gxt.chart.client.draw.sprite.CircleSprite;
 import com.sencha.gxt.core.client.util.PrecisePoint;
-import com.sencha.gxt.sample.graph.client.draw.GraphComponent;
-import com.sencha.gxt.sample.graph.client.draw.GraphDnD;
 import com.sencha.gxt.sample.graph.client.model.Edge;
 import com.sencha.gxt.sample.graph.client.model.Node;
 

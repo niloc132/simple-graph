@@ -34,6 +34,7 @@ import com.sencha.gxt.sample.graph.client.draw.GraphComponent;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.EdgeRenderer;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.NodeRenderer;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.RenderContext;
+import com.sencha.gxt.sample.graph.client.draw.CreateNodeDnD;
 import com.sencha.gxt.sample.graph.client.draw.NodeConnectionDnD;
 import com.sencha.gxt.sample.graph.client.draw.NodePositionDnD;
 import com.sencha.gxt.sample.graph.client.model.Edge;
