@@ -32,17 +32,23 @@ public class NodePositionDnD<N extends Node, E extends Edge> extends GraphDnD<N,
 
   protected boolean onStartDrag(int x, int y) {
     activeNode = getGraph().getNodeAtCoords(x, y);
-    return activeNode != null;
+    if (activeNode != null) {
+      getGraph().setNodeLocked(activeNode, true);
+      return true;
+    }
+    return false;
   }
   protected void onDrag(int x, int y) {
     getGraph().setCoords(activeNode, x, y);
   }
   
   protected void onDrop(int x, int y) {
+    getGraph().setNodeLocked(activeNode, false);
     activeNode = null;
   }
 
   protected void onCancel() {
+    getGraph().setNodeLocked(activeNode, false);
     activeNode = null;
   }
 }

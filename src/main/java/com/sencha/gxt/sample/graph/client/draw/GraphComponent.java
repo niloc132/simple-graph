@@ -22,8 +22,10 @@ package com.sencha.gxt.sample.graph.client.draw;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import com.google.gwt.animation.client.AnimationScheduler;
@@ -129,6 +131,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
   private List<N> nodes = new ArrayList<N>();
   private Map<N, PrecisePoint> locations = new HashMap<N, PrecisePoint>();
   private Map<N, PrecisePoint> vectors = new HashMap<N, PrecisePoint>();
+  private Set<N> locked = new HashSet<N>();
 
   private List<E> edges = new ArrayList<E>();
 
@@ -257,6 +260,20 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
   }
 
   /**
+   * Prevents the current node from having its position or velocity updated.
+   * 
+   * @param node
+   * @param isLocked
+   */
+  public void setNodeLocked(N node, boolean isLocked) {
+    if (isLocked) {
+      locked.add(node);
+    } else {
+      locked.remove(node);
+    }
+  }
+
+  /**
    * Performs an update of the force-directed layout. Automatically run if animations are enabled.
    */
   public void update() {
@@ -264,6 +281,9 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     //update forces acting on each node
     for (int i = 0; i < nodes.size(); i++) {
       N iNode = nodes.get(i);
+      if (locked.contains(iNode)) {//no need to update a locked node
+        continue;
+      }
       PrecisePoint iLoc = locations.get(iNode);
       PrecisePoint iVec = vectors.get(iNode);
       log.finest("Updating at node " + iNode.getId());
@@ -302,29 +322,35 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
 
       double force = ATTRACT_CONST * Math.max(distance - nodeDist, 0);
 
-      toVec.setX(toVec.getX() - bearing.getX() * force);
-      toVec.setY(toVec.getY() - bearing.getY() * force);
-      fromVec.setX(fromVec.getX() + bearing.getX() * force);
-      fromVec.setY(fromVec.getY() + bearing.getY() * force);
+      if (!locked.contains(to)) {//if locked, don't update the node's velocity
+        toVec.setX(toVec.getX() - bearing.getX() * force);
+        toVec.setY(toVec.getY() - bearing.getY() * force);
+      }
+      if (!locked.contains(from)) {//if locked, don't update the node's velocity
+        fromVec.setX(fromVec.getX() + bearing.getX() * force);
+        fromVec.setY(fromVec.getY() + bearing.getY() * force);
+      }
     }
 
     // update position of each node based on current forces
     for (int i = 0; i < nodes.size(); i++) {
       N iNode = nodes.get(i);
       PrecisePoint iLoc = locations.get(iNode);
-      PrecisePoint iVec = vectors.get(iNode);
+      if (!locked.contains(iNode)) {//if locked, don't apply velocity to position
+        PrecisePoint iVec = vectors.get(iNode);
 
-      //apply some friction (probably should be done earlier)
-      iVec.setX(iVec.getX() * (1 - FRICTION_CONST));
-      iVec.setY(iVec.getY() * (1 - FRICTION_CONST));
+        //apply some friction (probably should be done earlier)
+        iVec.setX(iVec.getX() * (1 - FRICTION_CONST));
+        iVec.setY(iVec.getY() * (1 - FRICTION_CONST));
 
-      //update position
-      iLoc.setX(iLoc.getX() + iVec.getX());
-      iLoc.setY(iLoc.getY() + iVec.getY());
-      log.finest("Moving " + iNode.getId());
-      log.finest("    Pos " + iLoc);
-      log.finest("    Vec " + iVec);
-      //TODO ensure two are not in the same place
+        //update position
+        iLoc.setX(iLoc.getX() + iVec.getX());
+        iLoc.setY(iLoc.getY() + iVec.getY());
+        log.finest("Moving " + iNode.getId());
+        log.finest("    Pos " + iLoc);
+        log.finest("    Vec " + iVec);
+        //TODO ensure two are not in the same place
+      }
 
       nodeRenderer.render(iNode, iLoc, new NodeRenderContext(iNode));
     }
@@ -334,7 +360,6 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       PrecisePoint toLoc = locations.get(e.getTo());
       PrecisePoint fromLoc = locations.get(e.getFrom());
       edgeRenderer.render(e, toLoc, fromLoc, new EdgeRenderContext(e));
-
     }
 
     //redraw
