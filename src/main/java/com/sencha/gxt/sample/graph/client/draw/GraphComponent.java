@@ -152,7 +152,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
 
   private double nodeDist = 50;
 
-  private double lastPos = 100;
+  private PrecisePoint lastPoint = new PrecisePoint(2 * nodeDist, 2 * nodeDist);
 
   private boolean animationEnabled = false;
 
@@ -166,9 +166,19 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
    * @param n the node to draw
    */
   public void addNode(N n) {
-    locations.put(n, new PrecisePoint(lastPos+=nodeDist, lastPos+=nodeDist));//TODO better jitter
+    locations.put(n, lastPoint);
     vectors.put(n, new PrecisePoint(0,0));
     nodes.add(n);
+
+    lastPoint = new PrecisePoint(lastPoint);
+    if (lastPoint.getY() <= 2 * nodeDist) {
+      lastPoint.setY(lastPoint.getX() + 2 * nodeDist);
+      lastPoint.setX(2 * nodeDist);
+    } else if (lastPoint.getY() <= lastPoint.getX()) {
+      lastPoint.setY(lastPoint.getY() - 2 * nodeDist);
+    } else {
+      lastPoint.setX(lastPoint.getX() + 2 * nodeDist);
+    }
   }
 
   /**
@@ -305,7 +315,6 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
         iVec.setX(iVec.getX() + bearing.getX() * force);
         iVec.setY(iVec.getY() + bearing.getY() * force);
       }
-
 
     }
     //pull toward all connected nodes
