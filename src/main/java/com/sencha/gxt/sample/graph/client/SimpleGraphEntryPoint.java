@@ -68,8 +68,8 @@ public class SimpleGraphEntryPoint implements EntryPoint {
           circleSprite.setRadius(6);
           context.useSprite(circleSprite);
         }
-        circleSprite.setCenterX(coords.getX());
-        circleSprite.setCenterY(coords.getY());
+        circleSprite.setCenterX((int)coords.getX());
+        circleSprite.setCenterY((int)coords.getY());
       }
     });
     graph.setEdgeRenderer(new EdgeRenderer<Edge>() {
@@ -82,10 +82,10 @@ public class SimpleGraphEntryPoint implements EntryPoint {
           sprite.addCommand(new LineTo());
           context.useSprite(sprite);
         }
-        ((MoveTo)sprite.getCommand(0)).setX(start.getX());
-        ((MoveTo)sprite.getCommand(0)).setY(start.getY());
-        ((LineTo)sprite.getCommand(1)).setX(end.getX());
-        ((LineTo)sprite.getCommand(1)).setY(end.getY());
+        ((MoveTo)sprite.getCommand(0)).setX((int)start.getX());
+        ((MoveTo)sprite.getCommand(0)).setY((int)start.getY());
+        ((LineTo)sprite.getCommand(1)).setX((int)end.getX());
+        ((LineTo)sprite.getCommand(1)).setY((int)end.getY());
 
         //mark sprite command as dirty
         sprite.setCommands(sprite.getCommands());

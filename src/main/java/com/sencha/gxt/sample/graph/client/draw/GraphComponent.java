@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.gwt.animation.client.AnimationScheduler;
@@ -100,6 +101,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       return spriteList;
     }
   }
+
   private class EdgeRenderContext implements RenderContext {
     private final E edge;
     public EdgeRenderContext(E node) {
@@ -122,6 +124,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       return spriteList;
     }
   }
+
   private static final double REPULSE_CONST = 500.0;
   private static final double ATTRACT_CONST = 0.002;
   private static final double FRICTION_CONST = 0.03;
@@ -210,6 +213,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       }
     }
   }
+
   public boolean isAnimationEnabled() {
     return animationEnabled;
   }
@@ -217,9 +221,11 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
   public void setEdgeRenderer(EdgeRenderer<E> edgeRenderer) {
     this.edgeRenderer = edgeRenderer;
   }
+
   public void setNodeRenderer(NodeRenderer<N> nodeRenderer) {
     this.nodeRenderer = nodeRenderer;
   }
+
   public void setNodeDist(double nodeDist) {
     this.nodeDist = nodeDist;
   }
@@ -296,9 +302,11 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       }
       PrecisePoint iLoc = locations.get(iNode);
       PrecisePoint iVec = vectors.get(iNode);
-      log.finest("Updating at node " + iNode.getId());
-      log.finest("    pos " + iLoc);
-      log.finest("    vec " + iVec);
+      if (log.isLoggable(Level.FINEST)) {
+        log.finest("Updating at node " + iNode.getId());
+        log.finest("    pos " + iLoc);
+        log.finest("    vec " + iVec);
+      }
 
       //push away from every other node
       for (int j = 0; j < nodes.size(); j++) {
@@ -315,8 +323,8 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
         iVec.setX(iVec.getX() + bearing.getX() * force);
         iVec.setY(iVec.getY() + bearing.getY() * force);
       }
-
     }
+
     //pull toward all connected nodes
     for (E e : edges) {
       Node to = e.getTo();
@@ -355,9 +363,12 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
         //update position
         iLoc.setX(iLoc.getX() + iVec.getX());
         iLoc.setY(iLoc.getY() + iVec.getY());
-        log.finest("Moving " + iNode.getId());
-        log.finest("    Pos " + iLoc);
-        log.finest("    Vec " + iVec);
+
+        if (log.isLoggable(Level.FINEST)) {
+          log.finest("Moving " + iNode.getId());
+          log.finest("    Pos " + iLoc);
+          log.finest("    Vec " + iVec);
+        }
         //TODO ensure two are not in the same place
       }
 
