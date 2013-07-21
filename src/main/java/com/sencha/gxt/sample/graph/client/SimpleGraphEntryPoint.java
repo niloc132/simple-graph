@@ -21,8 +21,11 @@ package com.sencha.gxt.sample.graph.client;
  */
 
 import com.google.gwt.core.client.EntryPoint;
+import com.google.gwt.core.client.GWT;
+import com.google.gwt.core.client.GWT.UncaughtExceptionHandler;
 import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.google.gwt.event.logical.shared.ValueChangeHandler;
+import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.sencha.gxt.chart.client.draw.RGB;
 import com.sencha.gxt.chart.client.draw.path.LineTo;
@@ -30,11 +33,12 @@ import com.sencha.gxt.chart.client.draw.path.MoveTo;
 import com.sencha.gxt.chart.client.draw.path.PathSprite;
 import com.sencha.gxt.chart.client.draw.sprite.CircleSprite;
 import com.sencha.gxt.core.client.util.PrecisePoint;
+import com.sencha.gxt.sample.graph.client.draw.CreateNodeDnD;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.EdgeRenderer;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.NodeRenderer;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.RenderContext;
-import com.sencha.gxt.sample.graph.client.draw.CreateNodeDnD;
+import com.sencha.gxt.sample.graph.client.draw.GraphTouch;
 import com.sencha.gxt.sample.graph.client.draw.NodeConnectionDnD;
 import com.sencha.gxt.sample.graph.client.draw.NodePositionDnD;
 import com.sencha.gxt.sample.graph.client.model.Edge;
@@ -55,6 +59,12 @@ import com.sencha.gxt.widget.core.client.tree.Tree.CheckState;
 public class SimpleGraphEntryPoint implements EntryPoint {
 
   public void onModuleLoad() {
+    GWT.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+      @Override
+      public void onUncaughtException(Throwable e) {
+        Window.alert(e.getMessage());
+      }
+    });
     Viewport vp = new Viewport();
 
     VerticalLayoutContainer vlc = new VerticalLayoutContainer();
@@ -65,7 +75,7 @@ public class SimpleGraphEntryPoint implements EntryPoint {
         CircleSprite circleSprite = (CircleSprite)context.getSprites().get(0);
         if (circleSprite == null) {
           circleSprite = new CircleSprite();
-          circleSprite.setRadius(6);
+          circleSprite.setRadius(30);
           context.useSprite(circleSprite);
         }
         circleSprite.setCenterX((int)coords.getX());
@@ -173,7 +183,34 @@ public class SimpleGraphEntryPoint implements EntryPoint {
     });
     tool.getMenu().add(create);
 
-//    tool.getMenu().add(new CheckMenuItem("Pan graph"));
+    new GraphTouch<Node, Edge>(graph){
+      private Node activeNode;
+
+
+      protected boolean onStartDrag(int x, int y) {
+        activeNode = getGraph().getNodeAtCoords(x, y);
+        if (activeNode != null) {
+          getGraph().setNodeLocked(activeNode, true);
+          return true;
+        }
+        return false;
+      }
+      protected void onDrag(int x, int y) {
+        getGraph().setCoords(activeNode, x, y);
+      }
+
+      protected void onDrop(int x, int y) {
+        getGraph().setNodeLocked(activeNode, false);
+        activeNode = null;
+      }
+
+      protected void onCancel() {
+        getGraph().setNodeLocked(activeNode, false);
+        activeNode = null;
+      }
+    };
+
+    //    tool.getMenu().add(new CheckMenuItem("Pan graph"));
 
 
     vlc.add(controls, new VerticalLayoutData(1, -1));

@@ -303,9 +303,9 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       PrecisePoint iLoc = locations.get(iNode);
       PrecisePoint iVec = vectors.get(iNode);
       if (log.isLoggable(Level.FINEST)) {
-        log.finest("Updating at node " + iNode.getId());
-        log.finest("    pos " + iLoc);
-        log.finest("    vec " + iVec);
+        log.finest("Updating at node " + iNode.getId() + "\n" +
+            "    pos " + iLoc + "\n" +
+            "    vec " + iVec);
       }
 
       //push away from every other node
@@ -365,9 +365,9 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
         iLoc.setY(iLoc.getY() + iVec.getY());
 
         if (log.isLoggable(Level.FINEST)) {
-          log.finest("Moving " + iNode.getId());
-          log.finest("    Pos " + iLoc);
-          log.finest("    Vec " + iVec);
+          log.finest("Moving " + iNode.getId() + "\n" +
+              "    Pos " + iLoc + "\n" +
+              "    Vec " + iVec);
         }
         //TODO ensure two are not in the same place
       }
