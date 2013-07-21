@@ -144,6 +144,9 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       // Run the update to redraw
       update();
 
+      //redraw
+      redrawSurfaceForced();
+
       // Automatically re-schedule
       animationHandle = AnimationScheduler.get().requestAnimationFrame(this);
     }
@@ -256,8 +259,9 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     for (Map.Entry<N, SpriteList<Sprite>> entry : nodeSprites.entrySet()) {
       //TODO should not iterate over all possible sprites, just start with the ones that are at
       //least possible
-      for (Sprite s : entry.getValue()) {
-        if (s.getBBox().contains(x, y)) {
+      List<Sprite> sprites = entry.getValue();
+      for (int i = 0; i < sprites.size(); i++) {
+        if (sprites.get(i).getBBox().contains(x, y)) {
           return entry.getKey();
         }
       }
@@ -326,7 +330,8 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     }
 
     //pull toward all connected nodes
-    for (E e : edges) {
+    for (int i = 0; i < edges.size(); i++) {
+      E e = edges.get(i);
       Node to = e.getTo();
       PrecisePoint toLoc = locations.get(to);
       PrecisePoint toVec = vectors.get(to);
@@ -376,14 +381,12 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     }
 
     // update position of each edge based on current nodes
-    for (E e : edges) {
+    for (int i = 0; i < edges.size(); i++) {
+      E e = edges.get(i);
       PrecisePoint toLoc = locations.get(e.getTo());
       PrecisePoint fromLoc = locations.get(e.getFrom());
       edgeRenderer.render(e, toLoc, fromLoc, new EdgeRenderContext(e));
     }
-
-    //redraw
-    redrawSurface();
   }
 
   private static PrecisePoint bearingUnit(PrecisePoint iLoc, PrecisePoint jLoc) {
