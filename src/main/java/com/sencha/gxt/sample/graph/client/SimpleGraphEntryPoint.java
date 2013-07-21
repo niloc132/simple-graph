@@ -20,9 +20,6 @@ package com.sencha.gxt.sample.graph.client;
  * #L%
  */
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.GWT.UncaughtExceptionHandler;
@@ -41,7 +38,6 @@ import com.sencha.gxt.sample.graph.client.draw.GraphComponent;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.EdgeRenderer;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.NodeRenderer;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent.RenderContext;
-import com.sencha.gxt.sample.graph.client.draw.GraphTouch;
 import com.sencha.gxt.sample.graph.client.draw.NodeConnectionDnD;
 import com.sencha.gxt.sample.graph.client.draw.NodePositionDnD;
 import com.sencha.gxt.sample.graph.client.model.Edge;
@@ -185,38 +181,6 @@ public class SimpleGraphEntryPoint implements EntryPoint {
       }
     });
     tool.getMenu().add(create);
-
-    new GraphTouch<Node, Edge>(graph){
-      private final Map<Integer, Node> activeNode = new HashMap<Integer, Node>();
-
-      @Override
-      protected boolean onStartDrag(int i, int x, int y) {
-        Node node = getGraph().getNodeAtCoords(x, y);
-        if (node != null) {
-          activeNode.put(i, node);
-          getGraph().setNodeLocked(node, true);
-          return true;
-        }
-        return false;
-      }
-      @Override
-      protected void onDrag(int i, int x, int y) {
-        getGraph().setCoords(activeNode.get(i), x, y);
-      }
-      @Override
-      protected void onDrop(int i, int x, int y) {
-        getGraph().setNodeLocked(activeNode.get(i), false);
-        activeNode.remove(i);
-      }
-      @Override
-      protected void onCancel() {
-        for (Node n : activeNode.values()) {
-          getGraph().setNodeLocked(n, false);
-        }
-        activeNode.clear();
-      }
-    };
-
     //    tool.getMenu().add(new CheckMenuItem("Pan graph"));
 
 

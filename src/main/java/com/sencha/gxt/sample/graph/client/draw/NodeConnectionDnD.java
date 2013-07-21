@@ -20,6 +20,9 @@ package com.sencha.gxt.sample.graph.client.draw;
  * #L%
  */
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.sencha.gxt.chart.client.draw.RGB;
 import com.sencha.gxt.chart.client.draw.path.LineTo;
 import com.sencha.gxt.chart.client.draw.path.MoveTo;
@@ -30,34 +33,38 @@ import com.sencha.gxt.sample.graph.client.model.Node;
 
 public class NodeConnectionDnD<N extends Node, E extends Edge> extends GraphDnD<N, E> {
 
-  private N startNode;
-  private boolean oldIsAnimated;
-  private PathSprite newConnection;
+  private Map<String, N> startNodes = new HashMap<String, N>();
+  private Map<String, Boolean> oldIsAnimated = new HashMap<String, Boolean>();
+  private Map<String, PathSprite> newConnections = new HashMap<String, PathSprite>();
+
   public NodeConnectionDnD(GraphComponent<N, E> graph) {
     super(graph);
   }
 
   @Override
-  protected boolean onStartDrag(int x, int y) {
-    startNode = getGraph().getNodeAtCoords(x, y);
+  protected boolean onStartDrag(String key, int x, int y) {
+    N startNode = getGraph().getNodeAtCoords(x, y);
     if (startNode != null) {
+      startNodes.put(key, startNode);
       //stop animations for easier usability (consider replacing with locking nodes that we get near?)
-      oldIsAnimated = getGraph().isAnimationEnabled();
+      //TODO this tracking gets muuuch uglier with multiple concurrent moves
+      oldIsAnimated.put(key, getGraph().isAnimationEnabled());
       getGraph().setAnimationEnabled(false);
 
-      newConnection = new PathSprite();
+      PathSprite newConnection = new PathSprite();
       newConnection.setStroke(RGB.RED);
       PrecisePoint actual = getGraph().getNodeCoords(startNode);
       newConnection.addCommand(new MoveTo(actual.getX(), actual.getY()));
       getGraph().addSprite(newConnection);
       newConnection.redraw();
+      newConnections.put(key, newConnection);
       return true;
     }
     return false;
   }
 
   @Override
-  protected void onDrag(int x, int y) {
+  protected void onDrag(String key, int x, int y) {
     N endNode = getGraph().getNodeAtCoords(x, y);
     final LineTo line;
     if (endNode != null) {
@@ -68,25 +75,25 @@ public class NodeConnectionDnD<N extends Node, E extends Edge> extends GraphDnD<
       // just follow mouse if not
       line = new LineTo(x,y);
     }
-    if (newConnection.getCommands().size() != 1) {
-      assert newConnection.getCommands().size() == 2;
-      newConnection.getCommands().remove(1);
+    if (newConnections.get(key).getCommands().size() != 1) {
+      assert newConnections.get(key).getCommands().size() == 2;
+      newConnections.get(key).getCommands().remove(1);
     }
-    newConnection.addCommand(line);
-    newConnection.redraw();
+    newConnections.get(key).addCommand(line);
+    newConnections.get(key).redraw();
   }
 
   @Override
-  protected void onDrop(int x, int y) {
-    getGraph().remove(newConnection);
-    newConnection = null;
+  protected void onDrop(String key, int x, int y) {
+    getGraph().remove(newConnections.remove(key));
 
     N endNode = getGraph().getNodeAtCoords(x, y);
     if (endNode != null) {
-      getGraph().addEdge(createEdge(startNode, endNode));
+      getGraph().addEdge(createEdge(startNodes.get(key), endNode));
     }
-    startNode = null;
-    getGraph().setAnimationEnabled(oldIsAnimated);
+    startNodes.remove(key);
+    //TODO dumb
+    getGraph().setAnimationEnabled(oldIsAnimated.get(key));
   }
 
   protected E createEdge(N startNode, N endNode) {
@@ -95,11 +102,13 @@ public class NodeConnectionDnD<N extends Node, E extends Edge> extends GraphDnD<
 
   @Override
   protected void onCancel() {
-    getGraph().remove(newConnection);
-    newConnection = null;
+    for (String key : newConnections.keySet()) {
+      getGraph().remove(newConnections.remove(key));
+      //TODO dumb
+      getGraph().setAnimationEnabled(oldIsAnimated.get(key));
+    }
 
-    startNode = null;
-    getGraph().setAnimationEnabled(oldIsAnimated);
+    startNodes.clear();
   }
 
 }

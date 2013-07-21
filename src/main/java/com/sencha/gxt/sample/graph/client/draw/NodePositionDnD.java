@@ -20,35 +20,40 @@ package com.sencha.gxt.sample.graph.client.draw;
  * #L%
  */
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.sencha.gxt.sample.graph.client.model.Edge;
 import com.sencha.gxt.sample.graph.client.model.Node;
 
 public class NodePositionDnD<N extends Node, E extends Edge> extends GraphDnD<N,E> {
-  private N activeNode;
+  private Map<String, N> activeNodes = new HashMap<String, N>();
 
   public NodePositionDnD(GraphComponent<N, E> graph) {
     super(graph);
   }
 
-  protected boolean onStartDrag(int x, int y) {
-    activeNode = getGraph().getNodeAtCoords(x, y);
+  protected boolean onStartDrag(String key, int x, int y) {
+    N activeNode = getGraph().getNodeAtCoords(x, y);
     if (activeNode != null) {
+      activeNodes.put(key, activeNode);
       getGraph().setNodeLocked(activeNode, true);
       return true;
     }
     return false;
   }
-  protected void onDrag(int x, int y) {
-    getGraph().setCoords(activeNode, x, y);
+
+  protected void onDrag(String key, int x, int y) {
+    getGraph().setCoords(activeNodes.get(key), x, y);
   }
-  
-  protected void onDrop(int x, int y) {
-    getGraph().setNodeLocked(activeNode, false);
-    activeNode = null;
+
+  protected void onDrop(String key, int x, int y) {
+    getGraph().setNodeLocked(activeNodes.remove(key), false);
   }
 
   protected void onCancel() {
-    getGraph().setNodeLocked(activeNode, false);
-    activeNode = null;
+    for (String key : activeNodes.keySet()) {
+      getGraph().setNodeLocked(activeNodes.remove(key), false);
+    }
   }
 }

@@ -20,6 +20,9 @@ package com.sencha.gxt.sample.graph.client.draw;
  * #L%
  */
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.sencha.gxt.chart.client.draw.RGB;
 import com.sencha.gxt.chart.client.draw.path.LineTo;
 import com.sencha.gxt.chart.client.draw.path.MoveTo;
@@ -31,43 +34,47 @@ import com.sencha.gxt.sample.graph.client.model.Node;
 
 public class CreateNodeDnD<N extends Node, E extends Edge> extends GraphDnD<N, E> {
 
-  private N newNode;
-  private boolean oldIsAnimated;
-  private CircleSprite newNodeRendered;
-  private PathSprite newConnection;
+  private final Map<String, N> newNodes = new HashMap<String, N>();
+  private final Map<String, Boolean> oldIsAnimated = new HashMap<String, Boolean>();
+  private final Map<String, CircleSprite> newNodesRendered = new HashMap<String, CircleSprite>();
+  private final Map<String, PathSprite> newConnections = new HashMap<String, PathSprite>();
+
   public CreateNodeDnD(GraphComponent<N, E> graph) {
     super(graph);
   }
 
   @Override
-  protected boolean onStartDrag(int x, int y) {
+  protected boolean onStartDrag(String key, int x, int y) {
     if (getGraph().getNodeAtCoords(x, y) != null) {
       return false;
     }
-    newNode = createNode(x, y);
+    newNodes.put(key, createNode(x, y));
 
-    oldIsAnimated = getGraph().isAnimationEnabled();
+    //TODO this tracking gets muuuch uglier with multiple concurrent moves
+    oldIsAnimated.put(key, getGraph().isAnimationEnabled());
     getGraph().setAnimationEnabled(false);
 
-    newNodeRendered = new CircleSprite();
+    CircleSprite newNodeRendered = new CircleSprite();
     newNodeRendered.setCenterX(x);
     newNodeRendered.setCenterY(y);
     newNodeRendered.setRadius(3);
     newNodeRendered.setFill(RGB.RED);
     getGraph().addSprite(newNodeRendered);
     newNodeRendered.redraw();
+    newNodesRendered.put(key, newNodeRendered);
 
-    newConnection = new PathSprite();
+    PathSprite newConnection = new PathSprite();
     newConnection.setStroke(RGB.RED);
     newConnection.addCommand(new MoveTo(x,y));
     getGraph().addSprite(newConnection);
     newConnection.redraw();
+    newConnections.put(key, newConnection);
 
     return true;
   }
 
   @Override
-  protected void onDrag(int x, int y) {
+  protected void onDrag(String key, int x, int y) {
     N endNode = getGraph().getNodeAtCoords(x, y);
     final LineTo line;
     if (endNode != null) {
@@ -78,43 +85,45 @@ public class CreateNodeDnD<N extends Node, E extends Edge> extends GraphDnD<N, E
       // just follow mouse if not
       line = new LineTo(x,y);
     }
-    if (newConnection.getCommands().size() != 1) {
-      assert newConnection.getCommands().size() == 2;
-      newConnection.getCommands().remove(1);
+    if (newConnections.get(key).getCommands().size() != 1) {
+      assert newConnections.get(key).getCommands().size() == 2;
+      newConnections.get(key).getCommands().remove(1);
     }
-    newConnection.addCommand(line);
-    newConnection.redraw();  
+    newConnections.get(key).addCommand(line);
+    newConnections.get(key).redraw();
   }
 
   @Override
-  protected void onDrop(int x, int y) {
+  protected void onDrop(String key, int x, int y) {
     N endNode = getGraph().getNodeAtCoords(x, y);
     if (endNode != null) {
-      E newEdge = createEdge(newNode, endNode);
-      
-      getGraph().addNode(newNode);
+      E newEdge = createEdge(newNodes.get(key), endNode);
+
+      getGraph().addNode(newNodes.get(key));
       getGraph().addEdge(newEdge);
-      getGraph().setCoords(newNode, getDragStartPosition().getX(), getDragStartPosition().getY());
+      MoveTo move = (MoveTo) newConnections.get(key).getCommand(0);
+      getGraph().setCoords(newNodes.get(key), (int) move.getX(), (int) move.getY());
     }
 
-    getGraph().remove(newNodeRendered);
-    newNodeRendered = null;
-    getGraph().remove(newConnection);
-    newConnection = null;
+    getGraph().remove(newNodesRendered.get(key));
+    newNodesRendered.remove(key);
+    getGraph().remove(newConnections.get(key));
+    newConnections.remove(key);
 
-    newNode = null;
-    getGraph().setAnimationEnabled(oldIsAnimated);
+    newNodes.remove(key);
+    getGraph().setAnimationEnabled(oldIsAnimated.remove(key));
   }
 
   @Override
   protected void onCancel() {
-    getGraph().remove(newNodeRendered);
-    newNodeRendered = null;
-    getGraph().remove(newConnection);
-    newConnection = null;
+    for (String key : newNodesRendered.keySet()) {
+      getGraph().remove(newNodesRendered.remove(key));
+      getGraph().remove(newConnections.remove(key));
 
-    newNode = null;
-    getGraph().setAnimationEnabled(oldIsAnimated);
+      //TODO particularly stupid
+      getGraph().setAnimationEnabled(oldIsAnimated.get(key));
+    }
+    newNodes.clear();
   }
 
   protected N createNode(int x, int y) {
