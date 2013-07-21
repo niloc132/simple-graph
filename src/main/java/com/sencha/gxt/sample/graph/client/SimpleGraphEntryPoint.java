@@ -20,6 +20,9 @@ package com.sencha.gxt.sample.graph.client;
  * #L%
  */
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.GWT.UncaughtExceptionHandler;
@@ -184,29 +187,33 @@ public class SimpleGraphEntryPoint implements EntryPoint {
     tool.getMenu().add(create);
 
     new GraphTouch<Node, Edge>(graph){
-      private Node activeNode;
+      private final Map<Integer, Node> activeNode = new HashMap<Integer, Node>();
 
-
-      protected boolean onStartDrag(int x, int y) {
-        activeNode = getGraph().getNodeAtCoords(x, y);
-        if (activeNode != null) {
-          getGraph().setNodeLocked(activeNode, true);
+      @Override
+      protected boolean onStartDrag(int i, int x, int y) {
+        Node node = getGraph().getNodeAtCoords(x, y);
+        if (node != null) {
+          activeNode.put(i, node);
+          getGraph().setNodeLocked(node, true);
           return true;
         }
         return false;
       }
-      protected void onDrag(int x, int y) {
-        getGraph().setCoords(activeNode, x, y);
+      @Override
+      protected void onDrag(int i, int x, int y) {
+        getGraph().setCoords(activeNode.get(i), x, y);
       }
-
-      protected void onDrop(int x, int y) {
-        getGraph().setNodeLocked(activeNode, false);
-        activeNode = null;
+      @Override
+      protected void onDrop(int i, int x, int y) {
+        getGraph().setNodeLocked(activeNode.get(i), false);
+        activeNode.remove(i);
       }
-
+      @Override
       protected void onCancel() {
-        getGraph().setNodeLocked(activeNode, false);
-        activeNode = null;
+        for (Node n : activeNode.values()) {
+          getGraph().setNodeLocked(n, false);
+        }
+        activeNode.clear();
       }
     };
 

@@ -38,7 +38,7 @@ import com.sencha.gxt.sample.graph.client.model.Node;
  * @param <E>
  */
 public abstract class GraphDnD<N extends Node, E extends Edge> {
-  private class Handler extends BaseEventPreview implements MouseDownHandler {
+  private class MouseHandler extends BaseEventPreview implements MouseDownHandler {
     @Override
     public void onMouseDown(MouseDownEvent event) {
       GraphDnD.this.onMouseDown(event);
@@ -59,7 +59,7 @@ public abstract class GraphDnD<N extends Node, E extends Edge> {
     }
   }
 
-  private final Handler handler = new Handler();
+  private final MouseHandler handler = new MouseHandler();
   private HandlerRegistration handlerReg;
   private final GraphComponent<N, E> graph;
   private Point dragStartPosition;

@@ -20,9 +20,13 @@ package com.sencha.gxt.sample.graph.client.draw;
  * #L%
  */
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
-import com.google.gwt.dom.client.NativeEvent;
+import com.google.gwt.core.client.JsArray;
 import com.google.gwt.dom.client.Touch;
 import com.google.gwt.event.dom.client.TouchStartEvent;
 import com.google.gwt.event.dom.client.TouchStartHandler;
@@ -36,7 +40,7 @@ import com.sencha.gxt.sample.graph.client.model.Node;
 
 public abstract class GraphTouch<N extends Node, E extends Edge> {
   private static final Logger log = Logger.getLogger(GraphTouch.class.getName());
-  private class Handler  extends BaseEventPreview implements TouchStartHandler {
+  private class TouchHandler extends BaseEventPreview implements TouchStartHandler {
     @Override
     public void onTouchStart(TouchStartEvent event) {
       GraphTouch.this.onTouchStart(event);
@@ -58,13 +62,12 @@ public abstract class GraphTouch<N extends Node, E extends Edge> {
       return true;
     }
   }
-  private final Handler handler = new Handler();
+  private final TouchHandler handler = new TouchHandler();
   private HandlerRegistration handlerReg;
   private final GraphComponent<N, E> graph;
 
-  private Integer activeTouch = null;
-  private Point dragStartPosition;
-  private Point lastDragPosition;
+  private final Map<Integer, Point> dragStartPosition = new HashMap<Integer, Point>();
+  private final Map<Integer, Point> lastDragPosition = new HashMap<Integer, Point>();
 
   public GraphTouch(GraphComponent<N,E> graph) {
     this.graph = graph;
@@ -84,10 +87,11 @@ public abstract class GraphTouch<N extends Node, E extends Edge> {
   public void release() {
     assert handlerReg != null : "Already released";
     //if dragging, cancel
-    if (dragStartPosition != null) {
+    if (!dragStartPosition.isEmpty()) {
       onCancel();
 
-      dragStartPosition = null;
+      dragStartPosition.clear();
+      lastDragPosition.clear();
       handler.remove();
     }
 
@@ -96,95 +100,85 @@ public abstract class GraphTouch<N extends Node, E extends Edge> {
   }
 
   protected void onTouchStart(TouchStartEvent event) {
-    if (activeTouch != null) {
-      //already dragging
-      return;
-    }
-    assert event.getTouches().length() == 1;
-    Touch t = event.getTouches().get(0);
+    JsArray<Touch> touches = event.getChangedTouches();
 
-    Point dragStartPosition = new Point(t.getRelativeX(graph.getElement()), t.getRelativeY(graph.getElement()));
-    log.finer("Touch start: " + dragStartPosition.toString());
+    for (int i = 0; i < touches.length(); i++) {
+      Touch t = touches.get(i);
+      Point dragStartPosition = new Point(t.getRelativeX(graph.getElement()), t.getRelativeY(graph.getElement()));
+      log.finer("Touch start: " + t.getIdentifier() + " @ " + dragStartPosition.toString());
 
-    boolean start = onStartDrag(dragStartPosition.getX(), dragStartPosition.getY());
+      boolean start = onStartDrag(t.getIdentifier(), dragStartPosition.getX(), dragStartPosition.getY());
 
-    if (!start) {
-      //not actually dragging, give up
-      return;
-    }
-    this.activeTouch = t.getIdentifier();
-    this.dragStartPosition = dragStartPosition;
-
-    //watch for next move or up
-    handler.add();
-
-    //TODO fire an event about starting dragging
-  }
-  private Touch findRelevantTouch(NativeEvent event) {
-    if (event.getTouches().length() == 1) {
-      assert activeTouch == null || (activeTouch.intValue() == event.getTouches().get(0).getIdentifier());
-      return event.getTouches().get(0);
-    }
-    for (int i = 0; i < event.getTouches().length(); i++) {
-      if (event.getTouches().get(i).getIdentifier() == activeTouch.intValue()) {
-        return event.getTouches().get(i);
+      if (!start) {
+        //not actually dragging, give up on this one
+        continue;
       }
+      this.dragStartPosition.put(t.getIdentifier(),dragStartPosition);
+
+      //watch for next move or up
+      handler.add();
+      event.preventDefault();
+
+      //TODO fire an event about starting dragging
     }
-    assert false;
-    return null;
   }
+
   protected void onTouchMove(Event e) {
-    Touch t = findRelevantTouch(e);
-    boolean found = false;
-    for (int i = 0; i < e.getChangedTouches().length(); i++) {
-      if (e.getChangedTouches().get(i).getIdentifier() == t.getIdentifier()) {
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      return;
-    }
-    assert dragStartPosition != null : "onMouseMove called while not actually dragging!";
-    //TODO fire an event about the move
-    int x = t.getClientX() - graph.getElement().getAbsoluteTop() + graph.getElement().getScrollTop() + graph.getElement().getOwnerDocument().getScrollTop();
-    int y = t.getClientY() - graph.getElement().getAbsoluteLeft() + graph.getElement().getScrollLeft() + graph.getElement().getOwnerDocument().getScrollLeft();
+    JsArray<Touch> touches = e.getChangedTouches();
 
-    lastDragPosition = new Point(x, y);
-    //TODO consider getting the offset from the original mouse point to the object
-    //     and using that here
-    onDrag(x, y);
-    log.finer("Touch move: " + dragStartPosition.toString());
+    for (int i = 0; i < touches.length(); i++) {
+      Touch t = touches.get(i);
+      if (!dragStartPosition.containsKey(t.getIdentifier())) {
+        //not an active drag
+        continue;
+      }
+      //TODO fire an event about the move
+      int x = t.getClientX() - graph.getElement().getAbsoluteTop() + graph.getElement().getScrollTop() + graph.getElement().getOwnerDocument().getScrollTop();
+      int y = t.getClientY() - graph.getElement().getAbsoluteLeft() + graph.getElement().getScrollLeft() + graph.getElement().getOwnerDocument().getScrollLeft();
+
+      lastDragPosition.put(t.getIdentifier(), new Point(x, y));
+      //TODO consider getting the offset from the original mouse point to the object
+      //     and using that here
+      onDrag(t.getIdentifier(), x, y);
+      e.preventDefault();
+      //      log.finer("Touch move: " + t.getIdentifier() + " @ " + lastDragPosition.get(t.getIdentifier()).toString());
+    }
 
   }
   protected void onTouchEnd(Event e) {
-    //		Touch t = findRelevantTouch(e);
-    if (lastDragPosition == null) {
-      return;
+    JsArray<Touch> touches = e.getTouches();
+
+    List<Integer> identifiers = new ArrayList<Integer>(dragStartPosition.keySet());
+    log.finer("ending, currently tracking: " + identifiers);
+    for (int i = 0; i < touches.length(); i++) {
+      identifiers.remove(touches.get(i).getIdentifier());
+    }
+    log.finer("now down to " + identifiers);
+    for (Integer identifier : identifiers) {
+      log.finer("[End] event for " + identifier);
+      Point lastPosition = lastDragPosition.get(identifier);
+      onDrop(identifier, lastPosition.getX(), lastPosition.getY());
+
+      log.finer("Touch end: " + identifier + " @ " + lastPosition.toString());
+      dragStartPosition.remove(identifier);
+      lastDragPosition.remove(identifier);
     }
 
-    assert dragStartPosition != null : "onMouseUp called while not actually dragging!";
-    //TODO fire an event about the release
-
-    onDrop(lastDragPosition.getX(), lastDragPosition.getY());
-
-    log.finer("Touch end: " + dragStartPosition.toString());
-    dragStartPosition = null;
-    lastDragPosition = null;
-    handler.remove();
-    activeTouch = null;
-
+    if (dragStartPosition.isEmpty()) {
+      assert lastDragPosition.isEmpty();
+      handler.remove();
+    }
   }
   protected void onTouchCancel(Event e) {
     onTouchEnd(e);
   }
 
-  //This api assumes exactly one dnd at a time
-  protected abstract boolean onStartDrag(int x, int y);
+  //This api allows for several simultaneous dnd
+  protected abstract boolean onStartDrag(int index, int x, int y);
 
-  protected abstract void onDrag(int x, int y);
+  protected abstract void onDrag(int index, int x, int y);
 
-  protected abstract void onDrop(int x, int y);
+  protected abstract void onDrop(int index, int x, int y);
 
   protected abstract void onCancel();
 }
