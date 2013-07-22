@@ -279,6 +279,18 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     return locations.get(node);
   }
 
+  public List<N> getNodes() {
+    return nodes;
+  }
+
+  public Set<N> getLocked() {
+    return locked;
+  }
+
+  public Map<N, PrecisePoint> getVectors() {
+    return vectors;
+  }
+
   /**
    * Prevents the current node from having its position or velocity updated.
    * 
