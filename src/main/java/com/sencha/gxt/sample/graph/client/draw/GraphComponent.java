@@ -133,8 +133,10 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
   private final Map<N, SpriteList<Sprite>> nodeSprites = new HashMap<N, SpriteList<Sprite>>();
   private final Map<E, SpriteList<Sprite>> edgeSprites = new HashMap<E, SpriteList<Sprite>>();
   private List<N> nodes = new ArrayList<N>();
-  private Map<N, PrecisePoint> locations = new HashMap<N, PrecisePoint>();
-  private Map<N, PrecisePoint> vectors = new HashMap<N, PrecisePoint>();
+
+  private double[] locArray = new double[10];
+  private double[] vecArray = new double[10];
+
   private Set<N> locked = new HashSet<N>();
 
   private List<E> edges = new ArrayList<E>();
@@ -173,11 +175,11 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
    * @param n the node to draw
    */
   public void addNode(N n) {
-    locations.put(n, lastPoint);
-    vectors.put(n, new PrecisePoint(0,0));
     nodes.add(n);
 
-    lastPoint = new PrecisePoint(lastPoint.getX(), lastPoint.getY());
+    locArray = grow(locArray, lastPoint.getX(), lastPoint.getY());
+    vecArray = grow(vecArray, 0.0, 0.0);
+
     int offsetWidth = getOffsetWidth();
     int offsetHeight = getOffsetHeight();
     if (((offsetWidth != 0) && (lastPoint.getX() > offsetWidth))
@@ -194,6 +196,26 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     }
   }
 
+  private double[] grow(double[] array, double x, double y) {
+    if (nodes.size() * 2 > array.length) {
+      double[] newArray = new double[array.length * 2];
+      System.arraycopy(array, 0, newArray, 0, array.length);
+      array = newArray;
+    }
+    set(array, nodes.size() - 1, x, y);
+    return array;
+  }
+  private void set(double[] array, int pos, double x, double y) {
+    array[pos * 2] = x;
+    array[pos * 2 + 1] = y;
+  }
+  private double getX(double[] array, int pos) {
+    return array[pos * 2];
+  }
+  private double getY(double[] array, int pos) {
+    return array[pos * 2 + 1];
+  }
+
   /**
    * Declares that a node should be rendered the next time the layout update is run.
    * 
@@ -207,8 +229,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
 
   public void removeNode(N node) {
     nodes.remove(node);
-    locations.remove(node);
-    vectors.remove(node);
+    //TODO splice out contents from vecArray, locArray
     locked.remove(node);
     nodeSprites.remove(node).clear();
     for (E edge : edges) {
@@ -228,8 +249,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     edges.clear();
     locked.clear();
     nodes.clear();
-    locations.clear();
-    vectors.clear();
+
     nodeSprites.clear();
     edgeSprites.clear();
     clearSurface();
@@ -295,9 +315,9 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
    * @param y the new y position in the widget
    */
   public void setCoords(N node, int x, int y) {
-    //TODO consider updating existing objects rather than creating new ones
-    locations.put(node, new PrecisePoint(x,y));
-    vectors.put(node, new PrecisePoint());//zero out the item's vector
+    int index = nodes.indexOf(node);
+    set(locArray, index, x, y);
+    set(vecArray, index, 0, 0);//zero out the item's vector
   }
 
   /**
@@ -329,7 +349,8 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
    * @return
    */
   public PrecisePoint getNodeCoords(N node) {
-    return locations.get(node);
+    int index = nodes.indexOf(node);
+    return new PrecisePoint(getX(locArray, index), getY(locArray, index));
   }
 
   /**
@@ -338,7 +359,8 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
    * @return
    */
   public PrecisePoint getNodeVector(N node) {
-    return vectors.get(node);
+    int index = nodes.indexOf(node);
+    return new PrecisePoint(getX(vecArray, index), getY(vecArray, index));
   }
 
   public List<N> getNodes() {
@@ -374,9 +396,11 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       if (locked.contains(iNode)) {//no need to update a locked node
         continue;
       }
-      PrecisePoint iLoc = locations.get(iNode);
-      PrecisePoint iVec = vectors.get(iNode);
+      double ix = getX(locArray, i), iy = getY(locArray, i);
+      double ivx = getX(vecArray, i), ivy = getY(vecArray, i);
       if (log.isLoggable(Level.FINEST)) {
+        PrecisePoint iLoc = getNodeCoords(iNode);
+        PrecisePoint iVec = getNodeVector(iNode);
         log.finest("Updating at node " + iNode.getId() + "\n" +
             "    pos " + iLoc + "\n" +
             "    vec " + iVec);
@@ -387,16 +411,19 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
         if (i == j) {
           continue;
         }
-        N jNode = nodes.get(j);
-        PrecisePoint jLoc = locations.get(jNode);
-        double distance = distance(iLoc.getX(), iLoc.getY(), jLoc.getX(), jLoc.getY());
+        double jx = getX(locArray, j), jy = getY(locArray, j);
+
+        double distance = distance(ix, iy, jx, jy);
         double force = REPULSE_CONST / (distance * distance);
 
         //i's change in bearing
-        double bx = (iLoc.getX() - jLoc.getX()) / distance * force,
-               by = (iLoc.getY() - jLoc.getY()) / distance * force;
-        iVec.setX(iVec.getX() + bx);
-        iVec.setY(iVec.getY() + by);
+        double bx = (ix - jx) / distance * force,
+               by = (iy - jy) / distance * force;
+
+        // need to re-assign to the local so that the next iter through j updates
+        ivx += bx;
+        ivy += by;
+        set(vecArray, i, ivx, ivy);
       }
     }
 
@@ -404,61 +431,59 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     for (int i = 0; i < edges.size(); i++) {
       E e = edges.get(i);
       Node to = e.getTo();
-      PrecisePoint toLoc = locations.get(to);
-      PrecisePoint toVec = vectors.get(to);
-      Node from = e.getFrom();
-      PrecisePoint fromLoc = locations.get(from);
-      PrecisePoint fromVec = vectors.get(from);
+      int toIndex = nodes.indexOf(to);
+      double toX = getX(locArray, toIndex), toY = getY(locArray, toIndex);
+      double toVX = getX(vecArray, toIndex), toVY = getY(vecArray, toIndex);
 
-      double distance = distance(toLoc.getX(), toLoc.getY(), fromLoc.getX(), fromLoc.getY());
+      Node from = e.getFrom();
+      int fromIndex = nodes.indexOf(from);
+      double fromX = getX(locArray, fromIndex), fromY = getY(locArray, fromIndex);
+      double fromVX = getX(vecArray, fromIndex), fromVY = getY(vecArray, fromIndex);
+
+      double distance = distance(toX, toY, fromX, fromY);
       double force = ATTRACT_CONST * Math.max(distance - nodeDist, 0);
 
       //to's change in bearing
-      double bx = (toLoc.getX() - fromLoc.getX()) / distance * force,
-             by = (toLoc.getY() - fromLoc.getY()) / distance * force;
+      double bx = (toX - fromX) / distance * force,
+             by = (toY - fromY) / distance * force;
 
 
       if (!locked.contains(to)) {//if locked, don't update the node's velocity
-        toVec.setX(toVec.getX() - bx * force);
-        toVec.setY(toVec.getY() - by * force);
+        set(vecArray, toIndex, toVX - bx * force, toVY - by * force);
       }
       if (!locked.contains(from)) {//if locked, don't update the node's velocity
-        fromVec.setX(fromVec.getX() + bx * force);
-        fromVec.setY(fromVec.getY() + by * force);
+        set(vecArray, fromIndex, fromVX + bx * force, fromVY + by * force);
       }
     }
 
     // update position of each node based on current forces
     for (int i = 0; i < nodes.size(); i++) {
       N iNode = nodes.get(i);
-      PrecisePoint iLoc = locations.get(iNode);
       if (!locked.contains(iNode)) {//if locked, don't apply velocity to position
-        PrecisePoint iVec = vectors.get(iNode);
-
         //apply some friction (probably should be done earlier)
-        iVec.setX(iVec.getX() * (1 - FRICTION_CONST));
-        iVec.setY(iVec.getY() * (1 - FRICTION_CONST));
+        double ivx = getX(vecArray, i) * (1 - FRICTION_CONST), ivy = getY(vecArray, i) * (1 - FRICTION_CONST);
+        set(vecArray, i, ivx, ivy);
 
         //update position
-        iLoc.setX(iLoc.getX() + iVec.getX());
-        iLoc.setY(iLoc.getY() + iVec.getY());
+        double ix = getX(locArray, i), iy = getY(locArray, i);
+        set(locArray, i, ix + ivx, iy + ivy);
 
         if (log.isLoggable(Level.FINEST)) {
           log.finest("Moving " + iNode.getId() + "\n" +
-              "    Pos " + iLoc + "\n" +
-              "    Vec " + iVec);
+              "    Pos " + getNodeCoords(iNode) + "\n" +
+              "    Vec " + getNodeVector(iNode));
         }
         //TODO ensure two are not in the same place
       }
 
-      nodeRenderer.render(iNode, iLoc, new NodeRenderContext(iNode));
+      nodeRenderer.render(iNode, getNodeCoords(iNode), new NodeRenderContext(iNode));
     }
 
     // update position of each edge based on current nodes
     for (int i = 0; i < edges.size(); i++) {
       E e = edges.get(i);
-      PrecisePoint toLoc = locations.get(e.getTo());
-      PrecisePoint fromLoc = locations.get(e.getFrom());
+      PrecisePoint toLoc = getNodeCoords((N) e.getTo());
+      PrecisePoint fromLoc = getNodeCoords((N) e.getFrom());
       edgeRenderer.render(e, toLoc, fromLoc, new EdgeRenderContext(e));
     }
   }
