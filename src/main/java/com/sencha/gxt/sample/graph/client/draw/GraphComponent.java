@@ -20,15 +20,6 @@ package com.sencha.gxt.sample.graph.client.draw;
  * #L%
  */
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import com.google.gwt.animation.client.AnimationScheduler;
 import com.google.gwt.animation.client.AnimationScheduler.AnimationCallback;
 import com.google.gwt.animation.client.AnimationScheduler.AnimationHandle;
@@ -38,6 +29,16 @@ import com.sencha.gxt.chart.client.draw.sprite.SpriteList;
 import com.sencha.gxt.core.client.util.PrecisePoint;
 import com.sencha.gxt.sample.graph.client.model.Edge;
 import com.sencha.gxt.sample.graph.client.model.Node;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Simple graph widget, implemented using the gxt draw library with a simple force-directed layout. Rendering
@@ -221,14 +222,31 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     return animationEnabled;
   }
 
+  /**
+   * Sets the renderer to use to draw edges.
+   * @see EdgeRenderContext
+   * @see EdgeRenderer
+   * @param edgeRenderer the instance to use when rendering any edge
+   */
   public void setEdgeRenderer(EdgeRenderer<E> edgeRenderer) {
     this.edgeRenderer = edgeRenderer;
   }
 
+  /**
+   * Sets the renderer to use to draw nodes.
+   * @see NodeRenderContext
+   * @see NodeRenderer
+   * @param nodeRenderer the instance to use when rendering any node
+   */
   public void setNodeRenderer(NodeRenderer<N> nodeRenderer) {
     this.nodeRenderer = nodeRenderer;
   }
 
+  /**
+   * Sets the length of the 'spring' to use on edges.
+   *
+   * @param nodeDist the length of the 'spring' to use on edges
+   */
   public void setNodeDist(double nodeDist) {
     this.nodeDist = nodeDist;
   }
@@ -237,9 +255,9 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
    * Allows external code to specify the position of a given node. When executed, will set the velocity
    * of that node to zero.
    *
-   * @param node
-   * @param x
-   * @param y
+   * @param node the node to move
+   * @param x the new x position in the widget
+   * @param y the new y position in the widget
    */
   public void setCoords(N node, int x, int y) {
     //TODO consider updating existing objects rather than creating new ones
@@ -279,16 +297,21 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     return locations.get(node);
   }
 
+  /**
+   * Gets the current velocity of the given node
+   * @param node
+   * @return
+   */
+  public PrecisePoint getNodeVector(N node) {
+    return vectors.get(node);
+  }
+
   public List<N> getNodes() {
-    return nodes;
+    return Collections.unmodifiableList(nodes);
   }
 
   public Set<N> getLocked() {
-    return locked;
-  }
-
-  public Map<N, PrecisePoint> getVectors() {
-    return vectors;
+    return Collections.unmodifiableSet(locked);
   }
 
   /**
