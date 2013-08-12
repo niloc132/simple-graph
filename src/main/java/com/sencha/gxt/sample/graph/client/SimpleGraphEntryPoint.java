@@ -25,13 +25,17 @@ import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.GWT.UncaughtExceptionHandler;
 import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.google.gwt.event.logical.shared.ValueChangeHandler;
+import com.google.gwt.safehtml.shared.SafeHtml;
+import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.Window;
+import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.sencha.gxt.chart.client.draw.RGB;
 import com.sencha.gxt.chart.client.draw.path.LineTo;
 import com.sencha.gxt.chart.client.draw.path.MoveTo;
 import com.sencha.gxt.chart.client.draw.path.PathSprite;
 import com.sencha.gxt.chart.client.draw.sprite.CircleSprite;
+import com.sencha.gxt.core.client.XTemplates;
 import com.sencha.gxt.core.client.util.PrecisePoint;
 import com.sencha.gxt.sample.graph.client.draw.CreateNodeDnD;
 import com.sencha.gxt.sample.graph.client.draw.GraphComponent;
@@ -56,6 +60,14 @@ import com.sencha.gxt.widget.core.client.toolbar.ToolBar;
 import com.sencha.gxt.widget.core.client.tree.Tree.CheckState;
 
 public class SimpleGraphEntryPoint implements EntryPoint {
+  public interface AnimationSpeedTemplate extends XTemplates {
+    @XTemplate("<div style='background-color:{[intervalMs < 17 ? \"green\" : (intervalMs < 30 ? \"yellow\" : \"red\")]};position:absolute;bottom:0;right:0'>" +
+            "{intervalMs:decimal}ms/frame" +
+            "</div>")
+    SafeHtml render(double intervalMs);
+  }
+  private int frameCount = 0;
+  private int lastTime = 0;
 
   public void onModuleLoad() {
     GWT.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
@@ -68,7 +80,13 @@ public class SimpleGraphEntryPoint implements EntryPoint {
 
     VerticalLayoutContainer vlc = new VerticalLayoutContainer();
 
-    final GraphComponent<Node, Edge> graph = new GraphComponent<Node, Edge>();
+    final GraphComponent<Node, Edge> graph = new GraphComponent<Node, Edge>() {
+      @Override
+      public void update() {
+        super.update();
+        frameCount++;
+      }
+    };
     graph.setNodeRenderer(new NodeRenderer<Node>() {
       public void render(Node node, PrecisePoint coords, RenderContext context) {
         CircleSprite circleSprite = (CircleSprite)context.getSprites().get(0);
@@ -189,7 +207,24 @@ public class SimpleGraphEntryPoint implements EntryPoint {
     vp.setWidget(vlc);
 
     RootPanel.get().add(vp);
+    final HTML html = new HTML("<div style='position:absolute;bottom:0;right:0'>Waiting...</div>");
+    RootPanel.get().add(html);
+    new Timer() {
+      @Override
+      public void run() {
+        int currentTime = getCurrentTimeInt();
+        double delay = currentTime - lastTime;
+        AnimationSpeedTemplate tpl = GWT.create(AnimationSpeedTemplate.class);
+        html.setHTML(tpl.render(delay/frameCount));
+        lastTime = currentTime;
+        frameCount = 0;
+      }
+    }.scheduleRepeating(1000);
   }
+
+  private native int getCurrentTimeInt() /*-{
+      return new Date().getTime();
+  }-*/;
 
   private void createStartingGraph(final GraphComponent<Node, Edge> graph) {
     Node n1 = new Node();
