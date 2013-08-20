@@ -423,8 +423,8 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
         // need to re-assign to the local so that the next iter through j updates
         ivx += bx;
         ivy += by;
-        set(vecArray, i, ivx, ivy);
       }
+      set(vecArray, i, ivx, ivy);
     }
 
     //pull toward all connected nodes
