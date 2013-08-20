@@ -177,13 +177,16 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     vectors.put(n, new PrecisePoint(0,0));
     nodes.add(n);
 
-    lastPoint = new PrecisePoint(lastPoint);
-    if (lastPoint.getX() > getOffsetWidth() || lastPoint.getY() > getOffsetHeight()) {
-      lastPoint.setX(2 * nodeDist);
-      lastPoint.setY(2 * nodeDist);
+    lastPoint = new PrecisePoint(lastPoint.getX(), lastPoint.getY());
+    int offsetWidth = getOffsetWidth();
+    int offsetHeight = getOffsetHeight();
+    if (((offsetWidth != 0) && (lastPoint.getX() > offsetWidth))
+            || ((offsetHeight != 0) && (lastPoint.getY() > offsetHeight))) {
+      lastPoint.setX(2 * nodeDist + nodeDist * Math.random());
+      lastPoint.setY(2 * nodeDist + nodeDist * Math.random());
     } else if (lastPoint.getY() <= 2 * nodeDist) {
       lastPoint.setY(lastPoint.getX() + 2 * nodeDist);
-      lastPoint.setX(2 * nodeDist);
+      lastPoint.setX(2 * nodeDist + nodeDist * Math.random());
     } else if (lastPoint.getY() <= lastPoint.getX()) {
       lastPoint.setY(lastPoint.getY() - 2 * nodeDist);
     } else {
@@ -463,8 +466,8 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
   }
 
   private static double distance(PrecisePoint iLoc, PrecisePoint jLoc) {
-    return Math.sqrt(Math.pow(iLoc.getX() - jLoc.getX(), 2) + 
-        Math.pow(iLoc.getY() - jLoc.getY(), 2));
+    return Math.max(10, Math.sqrt(Math.pow(iLoc.getX() - jLoc.getX(), 2) +
+            Math.pow(iLoc.getY() - jLoc.getY(), 2)));
   }
 
   @Override
