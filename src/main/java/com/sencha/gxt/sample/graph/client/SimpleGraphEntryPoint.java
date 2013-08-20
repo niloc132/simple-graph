@@ -20,9 +20,13 @@ package com.sencha.gxt.sample.graph.client;
  * #L%
  */
 
+import java.util.List;
+
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.GWT.UncaughtExceptionHandler;
+import com.google.gwt.event.logical.shared.SelectionEvent;
+import com.google.gwt.event.logical.shared.SelectionHandler;
 import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.google.gwt.event.logical.shared.ValueChangeHandler;
 import com.google.gwt.safehtml.shared.SafeHtml;
@@ -56,18 +60,20 @@ import com.sencha.gxt.widget.core.client.event.CheckChangeEvent;
 import com.sencha.gxt.widget.core.client.event.CheckChangeEvent.CheckChangeHandler;
 import com.sencha.gxt.widget.core.client.menu.CheckMenuItem;
 import com.sencha.gxt.widget.core.client.menu.Menu;
+import com.sencha.gxt.widget.core.client.menu.MenuItem;
 import com.sencha.gxt.widget.core.client.toolbar.ToolBar;
 import com.sencha.gxt.widget.core.client.tree.Tree.CheckState;
 
 public class SimpleGraphEntryPoint implements EntryPoint {
   public interface AnimationSpeedTemplate extends XTemplates {
     @XTemplate("<div style='background-color:{[intervalMs < 17 ? \"green\" : (intervalMs < 30 ? \"yellow\" : \"red\")]};position:absolute;bottom:0;right:0'>" +
-            "{intervalMs:decimal}ms/frame" +
+            "{intervalMs:number(\"#,##0.00\")}ms/frame" +
             "</div>")
     SafeHtml render(double intervalMs);
   }
   private int frameCount = 0;
   private int lastTime = 0;
+  private GraphComponent<Node,Edge> graph;
 
   public void onModuleLoad() {
     GWT.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
@@ -80,13 +86,14 @@ public class SimpleGraphEntryPoint implements EntryPoint {
 
     VerticalLayoutContainer vlc = new VerticalLayoutContainer();
 
-    final GraphComponent<Node, Edge> graph = new GraphComponent<Node, Edge>() {
+    graph = new GraphComponent<Node, Edge>() {
       @Override
       public void update() {
         super.update();
         frameCount++;
       }
     };
+    graph.setBackground(null);
     graph.setNodeRenderer(new NodeRenderer<Node>() {
       public void render(Node node, PrecisePoint coords, RenderContext context) {
         CircleSprite circleSprite = (CircleSprite)context.getSprites().get(0);
@@ -120,7 +127,7 @@ public class SimpleGraphEntryPoint implements EntryPoint {
     });
 
 
-    createStartingGraph(graph);
+    createStartingGraph();
 
     vlc.add(graph, new VerticalLayoutData(1,1));
 
@@ -201,6 +208,19 @@ public class SimpleGraphEntryPoint implements EntryPoint {
     tool.getMenu().add(create);
     //    tool.getMenu().add(new CheckMenuItem("Pan graph"));
 
+    TextButton generate = new TextButton("Generate");
+    generate.setMenu(new Menu());
+    controls.add(generate);
+
+    generate.getMenu().add(new MenuItem("Starting point", new SelectionHandler<MenuItem>() {
+      @Override
+      public void onSelection(SelectionEvent<MenuItem> event) {
+        createStartingGraph();
+      }
+    }));
+    generate.getMenu().add(createRingMenu());
+    generate.getMenu().add(createMeshMenu());
+    generate.getMenu().add(createStarMenu());
 
     vlc.add(controls, new VerticalLayoutData(1, -1));
 
@@ -226,7 +246,9 @@ public class SimpleGraphEntryPoint implements EntryPoint {
       return new Date().getTime();
   }-*/;
 
-  private void createStartingGraph(final GraphComponent<Node, Edge> graph) {
+  private void createStartingGraph() {
+    graph.clear();
+
     Node n1 = new Node();
     Node n2 = new Node();
     Node n3 = new Node();
@@ -262,5 +284,108 @@ public class SimpleGraphEntryPoint implements EntryPoint {
     graph.addEdge(new Edge(n4, n9));
     graph.addEdge(new Edge(n4, n10));
     graph.addEdge(new Edge(n4, n11));
+  }
+  private MenuItem createRingMenu() {
+    Menu menu = new Menu();
+
+    for (int i = 1; i < 8; i++) {
+      final int count = (int)Math.pow(2, i);
+      menu.add(new MenuItem("" + count, new SelectionHandler<MenuItem>() {
+        @Override
+        public void onSelection(SelectionEvent<MenuItem> event) {
+          createRing(count);
+        }
+      }));
+    }
+
+    MenuItem item = new MenuItem("Ring");
+    item.setSubMenu(menu);
+    return item;
+  }
+  private void createRing(int size) {
+    graph.clear();
+    if (size == 0) {
+      return;
+    }
+    Node start = new Node();
+    graph.addNode(start);
+    if (size == 1) {
+      return;
+    }
+    Node prev = start;
+    for (int i = 1; i < size; i++) {
+      Node next = new Node();
+      graph.addNode(next);
+      graph.addEdge(new Edge(prev, next));
+
+      prev = next;
+    }
+    if (prev != start) {
+      graph.addEdge(new Edge(prev, start));
+    }
+
+  }
+  private MenuItem createMeshMenu() {
+    Menu menu = new Menu();
+
+    for (int i = 1; i < 6; i++) {
+      final int count = (int)Math.pow(2, i);
+      menu.add(new MenuItem("" + count, new SelectionHandler<MenuItem>() {
+        @Override
+        public void onSelection(SelectionEvent<MenuItem> event) {
+          createMesh(count);
+        }
+      }));
+    }
+
+    MenuItem item = new MenuItem("Mesh");
+    item.setSubMenu(menu);
+    return item;
+  }
+  private void createMesh(int count) {
+    graph.clear();
+    //create all nodes
+    for (int i = 0; i < count; i++) {
+      graph.addNode(new Node());
+    }
+
+    //create all edges
+    List<Node> nodes = graph.getNodes();
+    for (int i = 0; i < nodes.size(); i++) {
+      for (int j = i + 1; j < nodes.size(); j++) {
+        graph.addEdge(new Edge(nodes.get(i), nodes.get(j)));
+      }
+    }
+  }
+  private MenuItem createStarMenu() {
+    Menu menu = new Menu();
+
+    for (int i = 1; i < 10; i++) {
+      final int count = (int)Math.pow(2, i);
+      menu.add(new MenuItem("" + count, new SelectionHandler<MenuItem>() {
+        @Override
+        public void onSelection(SelectionEvent<MenuItem> event) {
+          createStar(count);
+        }
+      }));
+    }
+
+    MenuItem item = new MenuItem("Star");
+    item.setSubMenu(menu);
+    return item;
+  }
+  private void createStar(int orbit) {
+    graph.clear();
+    //create all nodes except center
+    for (int i = 0; i < orbit; i++) {
+      graph.addNode(new Node());
+    }
+
+    //center
+    Node center = new Node();
+    for (Node node : graph.getNodes()) {
+      graph.addEdge(new Edge(center, node));
+    }
+    graph.addNode(center);
   }
 }

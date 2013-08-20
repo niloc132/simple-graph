@@ -20,16 +20,6 @@ package com.sencha.gxt.sample.graph.client.draw;
  * #L%
  */
 
-import com.google.gwt.animation.client.AnimationScheduler;
-import com.google.gwt.animation.client.AnimationScheduler.AnimationCallback;
-import com.google.gwt.animation.client.AnimationScheduler.AnimationHandle;
-import com.sencha.gxt.chart.client.draw.DrawComponent;
-import com.sencha.gxt.chart.client.draw.sprite.Sprite;
-import com.sencha.gxt.chart.client.draw.sprite.SpriteList;
-import com.sencha.gxt.core.client.util.PrecisePoint;
-import com.sencha.gxt.sample.graph.client.model.Edge;
-import com.sencha.gxt.sample.graph.client.model.Node;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -39,6 +29,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import com.google.gwt.animation.client.AnimationScheduler;
+import com.google.gwt.animation.client.AnimationScheduler.AnimationCallback;
+import com.google.gwt.animation.client.AnimationScheduler.AnimationHandle;
+import com.sencha.gxt.chart.client.draw.DrawComponent;
+import com.sencha.gxt.chart.client.draw.sprite.Sprite;
+import com.sencha.gxt.chart.client.draw.sprite.SpriteList;
+import com.sencha.gxt.core.client.util.PrecisePoint;
+import com.sencha.gxt.sample.graph.client.model.Edge;
+import com.sencha.gxt.sample.graph.client.model.Node;
 
 /**
  * Simple graph widget, implemented using the gxt draw library with a simple force-directed layout. Rendering
@@ -178,7 +178,10 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     nodes.add(n);
 
     lastPoint = new PrecisePoint(lastPoint);
-    if (lastPoint.getY() <= 2 * nodeDist) {
+    if (lastPoint.getX() > getOffsetWidth() || lastPoint.getY() > getOffsetHeight()) {
+      lastPoint.setX(2 * nodeDist);
+      lastPoint.setY(2 * nodeDist);
+    } else if (lastPoint.getY() <= 2 * nodeDist) {
       lastPoint.setY(lastPoint.getX() + 2 * nodeDist);
       lastPoint.setX(2 * nodeDist);
     } else if (lastPoint.getY() <= lastPoint.getX()) {
@@ -199,6 +202,35 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     edges.add(edge);
   }
 
+  public void removeNode(N node) {
+    nodes.remove(node);
+    locations.remove(node);
+    vectors.remove(node);
+    locked.remove(node);
+    nodeSprites.remove(node).clear();
+    for (E edge : edges) {
+      if (edge.getFrom().equals(node) || edge.getTo().equals(node)) {
+        edges.remove(edge);
+        edgeSprites.remove(edge).clear();
+      }
+    }
+  }
+
+  public void removeEdge(E edge) {
+    removeNode((N) edge.getFrom());
+    removeNode((N) edge.getTo());
+  }
+
+  public void clear() {
+    edges.clear();
+    locked.clear();
+    nodes.clear();
+    locations.clear();
+    vectors.clear();
+    nodeSprites.clear();
+    edgeSprites.clear();
+    clearSurface();
+  }
 
   /**
    * Enables or disables animations. Enabled by default - if disabled, the layout will not be run automatically, 
