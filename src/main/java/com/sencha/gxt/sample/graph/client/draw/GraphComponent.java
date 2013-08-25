@@ -37,6 +37,7 @@ import com.sencha.gxt.chart.client.draw.DrawComponent;
 import com.sencha.gxt.chart.client.draw.sprite.Sprite;
 import com.sencha.gxt.chart.client.draw.sprite.SpriteList;
 import com.sencha.gxt.core.client.util.PrecisePoint;
+import com.sencha.gxt.core.shared.FastMap;
 import com.sencha.gxt.sample.graph.client.model.Edge;
 import com.sencha.gxt.sample.graph.client.model.Node;
 
@@ -132,7 +133,8 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
 
   private final Map<N, SpriteList<Sprite>> nodeSprites = new HashMap<N, SpriteList<Sprite>>();
   private final Map<E, SpriteList<Sprite>> edgeSprites = new HashMap<E, SpriteList<Sprite>>();
-  private List<N> nodes = new ArrayList<N>();
+  private final List<N> nodes = new ArrayList<N>();
+  private final FastMap<Integer> nodeIndicies = new FastMap<Integer>();
 
   private double[] locArray = new double[10];
   private double[] vecArray = new double[10];
@@ -175,6 +177,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
    * @param n the node to draw
    */
   public void addNode(N n) {
+    nodeIndicies.put(n.getId() + "", nodes.size());
     nodes.add(n);
 
     locArray = grow(locArray, lastPoint.getX(), lastPoint.getY());
@@ -229,6 +232,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
 
   public void removeNode(N node) {
     nodes.remove(node);
+    assert false : "Finish nodeIndicies impl";
     //TODO splice out contents from vecArray, locArray
     locked.remove(node);
     nodeSprites.remove(node).clear();
@@ -315,7 +319,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
    * @param y the new y position in the widget
    */
   public void setCoords(N node, int x, int y) {
-    int index = nodes.indexOf(node);
+    int index = indexOfNode(node);
     set(locArray, index, x, y);
     set(vecArray, index, 0, 0);//zero out the item's vector
   }
@@ -349,8 +353,12 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
    * @return
    */
   public PrecisePoint getNodeCoords(N node) {
-    int index = nodes.indexOf(node);
+    int index = indexOfNode(node);
     return new PrecisePoint(getX(locArray, index), getY(locArray, index));
+  }
+
+  private int indexOfNode(Node node) {
+    return nodeIndicies.get(node.getId() + "");
   }
 
   /**
@@ -359,7 +367,7 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
    * @return
    */
   public PrecisePoint getNodeVector(N node) {
-    int index = nodes.indexOf(node);
+    int index = indexOfNode(node);
     return new PrecisePoint(getX(vecArray, index), getY(vecArray, index));
   }
 
@@ -431,12 +439,12 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     for (int i = 0; i < edges.size(); i++) {
       E e = edges.get(i);
       Node to = e.getTo();
-      int toIndex = nodes.indexOf(to);
+      int toIndex = indexOfNode(to);
       double toX = getX(locArray, toIndex), toY = getY(locArray, toIndex);
       double toVX = getX(vecArray, toIndex), toVY = getY(vecArray, toIndex);
 
       Node from = e.getFrom();
-      int fromIndex = nodes.indexOf(from);
+      int fromIndex = indexOfNode(from);
       double fromX = getX(locArray, fromIndex), fromY = getY(locArray, fromIndex);
       double fromVX = getX(vecArray, fromIndex), fromVY = getY(vecArray, fromIndex);
 
