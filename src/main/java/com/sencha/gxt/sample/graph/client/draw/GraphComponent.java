@@ -389,13 +389,14 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
         }
         N jNode = nodes.get(j);
         PrecisePoint jLoc = locations.get(jNode);
-        double distance = distance(iLoc, jLoc);
-        PrecisePoint bearing = bearingUnit(iLoc, jLoc);
-
+        double distance = distance(iLoc.getX(), iLoc.getY(), jLoc.getX(), jLoc.getY());
         double force = REPULSE_CONST / (distance * distance);
 
-        iVec.setX(iVec.getX() + bearing.getX() * force);
-        iVec.setY(iVec.getY() + bearing.getY() * force);
+        //i's change in bearing
+        double bx = (iLoc.getX() - jLoc.getX()) / distance * force,
+               by = (iLoc.getY() - jLoc.getY()) / distance * force;
+        iVec.setX(iVec.getX() + bx);
+        iVec.setY(iVec.getY() + by);
       }
     }
 
@@ -409,18 +410,21 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
       PrecisePoint fromLoc = locations.get(from);
       PrecisePoint fromVec = vectors.get(from);
 
-      double distance = distance(toLoc, fromLoc);
-      PrecisePoint bearing = bearingUnit(toLoc, fromLoc);//TODO cache this
-
+      double distance = distance(toLoc.getX(), toLoc.getY(), fromLoc.getX(), fromLoc.getY());
       double force = ATTRACT_CONST * Math.max(distance - nodeDist, 0);
 
+      //to's change in bearing
+      double bx = (toLoc.getX() - fromLoc.getX()) / distance * force,
+             by = (toLoc.getY() - fromLoc.getY()) / distance * force;
+
+
       if (!locked.contains(to)) {//if locked, don't update the node's velocity
-        toVec.setX(toVec.getX() - bearing.getX() * force);
-        toVec.setY(toVec.getY() - bearing.getY() * force);
+        toVec.setX(toVec.getX() - bx * force);
+        toVec.setY(toVec.getY() - by * force);
       }
       if (!locked.contains(from)) {//if locked, don't update the node's velocity
-        fromVec.setX(fromVec.getX() + bearing.getX() * force);
-        fromVec.setY(fromVec.getY() + bearing.getY() * force);
+        fromVec.setX(fromVec.getX() + bx * force);
+        fromVec.setY(fromVec.getY() + by * force);
       }
     }
 
@@ -459,15 +463,8 @@ public class GraphComponent<N extends Node, E extends Edge> extends DrawComponen
     }
   }
 
-  private static PrecisePoint bearingUnit(PrecisePoint iLoc, PrecisePoint jLoc) {
-    double dist = distance(iLoc, jLoc);
-    PrecisePoint bearing = new PrecisePoint((iLoc.getX() - jLoc.getX())/dist, (iLoc.getY() - jLoc.getY())/dist);
-    return bearing;
-  }
-
-  private static double distance(PrecisePoint iLoc, PrecisePoint jLoc) {
-    return Math.max(10, Math.sqrt(Math.pow(iLoc.getX() - jLoc.getX(), 2) +
-            Math.pow(iLoc.getY() - jLoc.getY(), 2)));
+  private static double distance(double x1, double y1, double x2, double y2) {
+    return Math.max(10, Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2)));
   }
 
   @Override
