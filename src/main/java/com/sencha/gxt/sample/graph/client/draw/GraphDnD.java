@@ -237,7 +237,7 @@ public abstract class GraphDnD<N extends Node, E extends Edge> {
   protected void onTouchEnd(Event e) {
     JsArray<Touch> touches = e.getTouches();
 
-    List<Integer> identifiers = new ArrayList<Integer>(touchDragStartPositions.keySet());
+    Set<Integer> identifiers = new HashSet<Integer>(touchDragStartPositions.keySet());
     log.finer("ending, currently tracking: " + identifiers);
     for (int i = 0; i < touches.length(); i++) {
       identifiers.remove(touches.get(i).getIdentifier());
